@@ -1,0 +1,1 @@
+from ifred.main import *
