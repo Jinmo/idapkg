@@ -1,4 +1,14 @@
-gimport os
+import json
+import os
+
+try:
+    import idaapi
+
+    prefix = os.path.join(idaapi.get_user_idadir(), 'palette')
+except:
+    prefix = os.path.expanduser('~/palette_test')
+
+CONFIG_PATH = os.path.join(prefix, 'config.json')
 
 
 def parse(*suffixes):
@@ -8,13 +18,24 @@ def parse(*suffixes):
     return path
 
 
-prefix = os.path.expanduser('~/.idapro/ifred')
+def load_config():
+    return json.load(open(CONFIG_PATH, 'rb'))
 
-g = {
-    'path': {
-        'plugins': parse('plugins')
-    },
-    'repos': [
-        'http://127.0.0.1/p/plugins.json'
-    ]
-}
+
+def save_config(g):
+    json.dump(g, open(CONFIG_PATH, 'wb'))
+
+
+try:
+    g = load_config()
+except (IOError, ValueError):
+    # save initial config
+    g = {
+        'path': {
+            'plugins': parse('plugins')
+        },
+        'repos': [
+            'http://127.0.0.1/p/plugins.json'
+        ]
+    }
+    save_config(g)

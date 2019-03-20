@@ -7,7 +7,10 @@ from ifred.util import register_action
 
 @register_action('Packages: Install Package')
 def install_plugins():
-    show_palette(Palette('install', get_online_packages()))
+    pkgs = get_online_packages()
+    pkgs = [(lambda item: Action(id=item.name, description=item.name, handler=lambda action: item.install()))(item)
+            for item in pkgs]
+    show_palette(Palette('install', pkgs))
 
 
 @register_action('Packages: Remove Package')

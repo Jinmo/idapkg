@@ -1,13 +1,16 @@
+import json
+import os
+import zipfile
 from StringIO import StringIO
 
-import os
-import json
 import requests
-import zipfile
 
 from ..config import g
+from ..downloader import download
 
 sess = requests.Session()
+
+SUPPORTED_PLATFORMS = []
 
 
 class Package(object):
@@ -31,9 +34,10 @@ class Package(object):
         assert 'version' in info
         assert 'entry' in info
 
-        assert isinstance(info['entry'], basestring) or isintance(info['entry'], dict) \
-            and supported_platforms.issubset(info['entry'].keys()) \
-            and all(isinstance(x, basestring) for x in info['entry'].values())
+        # TODO: apply jsonschema
+        assert isinstance(info['entry'], basestring) or isinstance(info['entry'], dict) \
+               and SUPPORTED_PLATFORMS.issubset(info['entry'].keys()) \
+               and all(isinstance(x, basestring) for x in info['entry'].values())
 
     def __repr__(self):
         return '<%s name=%r path=%r version=%r>' % (self.__class__.__name__, self.name, self.path, self.version)
@@ -42,6 +46,9 @@ class Package(object):
 class LocalPackage(Package):
     def __init__(self, name, path, version):
         super(LocalPackage, self).__init__(name, path, version)
+
+    def install(self):
+        raise NotImplementedError
 
     def remove(self):
         with open(os.path.join(self.path, '.removed'), 'wb') as f:
@@ -78,7 +85,8 @@ class LocalPackage(Package):
             return None
         with open(info_json, 'rb') as f:
             info = json.load(f)
-            result = LocalPackage(name=name if 'title' not in info or not info['title'].strip() else info['title'], path=path, version=info['version'])
+            result = LocalPackage(name=name if 'title' not in info or not info['title'].strip() else info['title'],
+                                  path=path, version=info['version'])
         return result
 
     @staticmethod
@@ -126,7 +134,10 @@ class InstallablePackage(Package):
 
         return pkg
 
+    def remove(self):
+        raise NotImplementedError
+
     def fetch(self, url):
-        r = sess.get(url)
-        assert r.status_code / 100 == 2, '2xx status required'
-        return r.content
+        r = download(url)
+        assert r.status / 100 == 2, '2xx status required'
+        return r.read()

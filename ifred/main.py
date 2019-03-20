@@ -1,8 +1,7 @@
-import sys
 import idaapi
 
-import ifred.plugins.packagemanager
-from ifred.package.package import LocalPackage
+from ifred.plugins.packagemanager import *
+
 
 class PackageManager(idaapi.plugin_t):
     flags = idaapi.PLUGIN_FIX | idaapi.PLUGIN_HIDE
@@ -21,7 +20,3 @@ class PackageManager(idaapi.plugin_t):
 
     def term(self):
         pass
-
-
-def PLUGIN_ENTRY():
-    return PackageManager()

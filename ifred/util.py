@@ -1,4 +1,5 @@
 import idaapi
+import threading
 
 
 # Helper for registering actions
@@ -11,6 +12,8 @@ def register_action(name, shortcut=''):
 
             # Say hello when invoked.
             def activate(self, ctx):
+                # t = threading.Thread(target=f)
+                # t.start()
                 f()
                 return 1
 
