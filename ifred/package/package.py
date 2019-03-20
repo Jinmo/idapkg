@@ -3,14 +3,10 @@ import os
 import zipfile
 from StringIO import StringIO
 
-import requests
-
 from ..config import g
 from ..downloader import download
 
-sess = requests.Session()
-
-SUPPORTED_PLATFORMS = []
+SUPPORTED_PLATFORMS = set(["64", "32"])
 
 
 class Package(object):
@@ -34,13 +30,25 @@ class Package(object):
         assert 'version' in info
         assert 'entry' in info
 
-        # TODO: apply jsonschema
+        # TODO: apply json schema
         assert isinstance(info['entry'], basestring) or isinstance(info['entry'], dict) \
-               and SUPPORTED_PLATFORMS.issubset(info['entry'].keys()) \
+               and set(info['entry'].keys()).issubset(SUPPORTED_PLATFORMS) \
                and all(isinstance(x, basestring) for x in info['entry'].values())
 
     def __repr__(self):
         return '<%s name=%r path=%r version=%r>' % (self.__class__.__name__, self.name, self.path, self.version)
+
+
+def select_entry(entry):
+    if isinstance(entry, basestring):
+        return entry
+    if isinstance(entry, dict):
+        import idc
+        if idc.__EA64__:
+            key = '64'
+        else:
+            key = '32'
+        return entry[key]
 
 
 class LocalPackage(Package):
@@ -59,7 +67,7 @@ class LocalPackage(Package):
 
     def load(self):
         import ida_loader
-        entry = os.path.join(self.path, self.info()['entry'])
+        entry = os.path.join(self.path, select_entry(self.info()['entry']))
         print 'Loading', `entry`
         ida_loader.load_plugin(str(entry))
 
