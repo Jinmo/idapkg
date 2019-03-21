@@ -15,7 +15,10 @@ def __do_work(queue, callback):
 def __fetch(orig_url):
     try:
         url = urlparse(orig_url)
-        conn = httplib.HTTPConnection(url.netloc)
+        if url.scheme == 'https':
+            conn = httplib.HTTPSConnection(url.netloc)
+        elif url.scheme == 'http':
+            conn = httplib.HTTPConnection(url.netloc)
         conn.request("GET", url.path)
         res = conn.getresponse()
         return res, orig_url
