@@ -35,7 +35,7 @@ except (IOError, ValueError):
             'plugins': parse('plugins')
         },
         'repos': [
-            'http://127.0.0.1/p/plugins.json'
+            'https://0e1.kr/p/plugins.json'
         ]
     }
     save_config(g)

@@ -6,7 +6,7 @@ from StringIO import StringIO
 from ..config import g
 from ..downloader import download
 
-SUPPORTED_PLATFORMS = set(["64", "32"])
+SUPPORTED_PLATFORMS = {"64", "32"}
 
 
 class Package(object):

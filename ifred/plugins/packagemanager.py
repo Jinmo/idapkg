@@ -7,26 +7,25 @@ from ifred.util import register_action
 
 @register_action('Packages: Install Package')
 def install_plugins():
-    pkgs = get_online_packages()
-    pkgs = [(lambda item: Action(id=item.name, description=item.name, handler=lambda action: item.install()))(item)
-            for item in pkgs]
-    show_palette(Palette('install', pkgs))
+    actions = get_online_packages()
+    actions = [(lambda _: Action(id=_.name, description=_.name, handler=lambda action: _.install()))(item)
+               for item in actions]
+    show_palette(Palette('install', actions))
 
 
 @register_action('Packages: Remove Package')
 def remove_plugins():
-    _ = lambda item: Action(id=item.name, description='%s %s' % (item.name, item.version),
-                            handler=lambda action: item.remove())
-    res = LocalPackage.all()
-    res = [_(item) for item in res]
+    actions = LocalPackage.all()
+    actions = [(lambda _: Action(id=_.name, description='%s %s' % (_.name, _.version),
+                                 handler=lambda action: _.remove()))(item) for item in actions]
 
-    show_palette(Palette('remove', res))
+    show_palette(Palette('remove', actions))
 
 
 @register_action('Packages: Edit user\'s config for packages')
 def edit_package_config():
-    _ = lambda item: Action(id=item.name, description='%s %s' % (item.name, item.version),
-                            handler=lambda action: _edit_config(item))
+    _ = lambda _: Action(id=_.name, description='%s %s' % (_.name, _.version),
+                         handler=lambda action: _edit_config(_))
     res = LocalPackage.all()
     res = [_(item) for item in res]
 
