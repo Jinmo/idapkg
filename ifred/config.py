@@ -4,11 +4,11 @@ import os
 try:
     import idaapi
 
-    prefix = os.path.join(idaapi.get_user_idadir(), 'palette')
+    prefix = os.path.join(idaapi.get_user_idadir(), 'plugins/')
 except:
     prefix = os.path.expanduser('~/palette_test')
 
-CONFIG_PATH = os.path.join(prefix, 'config.json')
+CONFIG_PATH = os.path.join(prefix, 'packages_config.json')
 
 
 def parse(*suffixes):

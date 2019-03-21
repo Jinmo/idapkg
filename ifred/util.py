@@ -12,9 +12,9 @@ def register_action(name, shortcut=''):
 
             # Say hello when invoked.
             def activate(self, ctx):
-                # t = threading.Thread(target=f)
-                # t.start()
-                f()
+                t = threading.Thread(target=f)
+                t.start()
+                # f()
                 return 1
 
             # This action is always available.
