@@ -1,4 +1,4 @@
-from ifred.main import PackageManager
+from pkg.main import PackageManager
 
 
 def PLUGIN_ENTRY():

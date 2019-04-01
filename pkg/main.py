@@ -1,8 +1,6 @@
-import time
 import idaapi
-import threading
 
-from ifred.plugins.packagemanager import *
+from pkg.plugins.packagemanager import *
 
 
 class PackageManager(idaapi.plugin_t):
@@ -26,3 +24,4 @@ class PackageManager(idaapi.plugin_t):
 
     def term(self):
         pass
+

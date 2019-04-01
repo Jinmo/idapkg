@@ -14,7 +14,6 @@ def register_action(name, shortcut=''):
             def activate(self, ctx):
                 t = threading.Thread(target=f)
                 t.start()
-                # f()
                 return 1
 
             # This action is always available.

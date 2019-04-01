@@ -20,9 +20,9 @@ def get_online_packages(repos=None):
                 raise Exception('connection error')
             r = json.load(res)
             base = r['base']
-            assert isinstance(r['packages'], list)
+            assert isinstance(r['data'], list)
             results.append((InstallablePackage(
-                name=item['name'], path=item['path'], version=item['version'], base=base) for item in r['packages']))
+                name=item['name'], path=item['id'], version=item['version'], base=base) for item in r['data']))
         except:
             io = StringIO()
             traceback.print_exc(file=io)
