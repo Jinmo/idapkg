@@ -1,6 +1,6 @@
 import idaapi
 
-from pkg.plugins.packagemanager import *
+from pkg.actions import *
 
 
 class PackageManager(idaapi.plugin_t):
