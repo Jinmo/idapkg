@@ -1,5 +1,6 @@
-import idaapi
 import threading
+
+import idaapi
 
 
 # Helper for registering actions

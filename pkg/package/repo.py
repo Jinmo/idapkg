@@ -1,11 +1,10 @@
-import traceback
 import json
-
-from .package import InstallablePackage
-from ..downloader import download_multi
+import traceback
 from StringIO import StringIO
 
+from .package import InstallablePackage
 from ..config import g
+from ..downloader import download_multi
 
 
 def get_online_packages(repos=None):

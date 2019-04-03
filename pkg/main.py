@@ -1,6 +1,14 @@
 import idaapi
 
-from pkg.actions import *
+from pkg.package import LocalPackage
+
+try:
+    # Load actions if ifred(palette module) is installed
+    import __palette__
+    import pkg.actions
+except:
+    # ifred is not installed, skip adding commands using palette
+    pass
 
 
 class PackageManager(idaapi.plugin_t):
@@ -12,8 +20,8 @@ class PackageManager(idaapi.plugin_t):
 
     @staticmethod
     def _load_all_plugins():
-        for pkg in LocalPackage.all():
-            pkg.load()
+        for package in LocalPackage.all():
+            package.load()
 
     def init(self):
         PackageManager._load_all_plugins()

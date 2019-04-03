@@ -1,7 +1,7 @@
 import json
 import os
-import sys
 import re
+import sys
 import zipfile
 from StringIO import StringIO
 
@@ -17,6 +17,7 @@ OS_MAP = {'win32': 'win', 'darwin': 'mac', 'linux2': 'linux'}
 current_ea = -1
 current_os = 'unknown'
 current_ver = '0.0'
+
 
 class Package(object):
     def __init__(self, name, path, version):
@@ -254,6 +255,8 @@ if __name__ == '__main__':
     def set_version(os, ver, ea):
         global current_os, current_ver, current_ea
         current_os, current_ver, current_ea = os, ver, ea
+
+
     set_version('win', '7.0.0', 32)
 
     assert select_entry([{
