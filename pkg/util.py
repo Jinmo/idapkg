@@ -34,3 +34,9 @@ def register_action(name, shortcut=''):
         idaapi.register_action(action_desc)
 
     return handler
+
+
+def __work(f):
+    t = threading.Thread(target=f)
+    t.start()
+    return t

@@ -7,7 +7,7 @@ from StringIO import StringIO
 
 from semantic_version import Spec, Version
 
-from ..config import g
+from ..config import initial_config
 from ..downloader import download
 from ..logger import logger
 
@@ -121,7 +121,7 @@ class LocalPackage(Package):
     @staticmethod
     def by_name(name, prefix=None):
         if prefix is None:
-            prefix = g['path']['plugins']
+            prefix = initial_config['path']['plugins']
 
         path = os.path.join(prefix, name)
 
@@ -143,7 +143,7 @@ class LocalPackage(Package):
 
     @staticmethod
     def all():
-        prefix = g['path']['plugins']
+        prefix = initial_config['path']['plugins']
 
         res = os.listdir(prefix)
         res = filter(lambda x: os.path.isdir(os.path.join(prefix, x)), res)
@@ -164,7 +164,7 @@ class InstallablePackage(Package):
 
         logger.info('Validating...')
         install_path = os.path.join(
-            g['path']['plugins'],
+            initial_config['path']['plugins'],
             self.path
         )
 
@@ -204,7 +204,7 @@ class InstallablePackage(Package):
 
         logger.info('Validating...')
         install_path = os.path.join(
-            g['path']['plugins'],
+            initial_config['path']['plugins'],
             name
         )
         info = None

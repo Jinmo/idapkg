@@ -3,13 +3,13 @@ import traceback
 from StringIO import StringIO
 
 from .package import InstallablePackage
-from ..config import g
+from ..config import initial_config
 from ..downloader import download_multi
 
 
 def get_online_packages(repos=None):
     if repos is None:
-        repos = g['repos']
+        repos = initial_config['repos']
 
     results = []
 

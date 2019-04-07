@@ -1,6 +1,7 @@
 import idaapi
 
 from pkg.package import LocalPackage
+from pkg.virtualenv_utils import prepare_virtualenv
 
 try:
     # Load actions if ifred(palette module) is installed
@@ -12,7 +13,7 @@ except:
 
 
 class PackageManager(idaapi.plugin_t):
-    flags = idaapi.PLUGIN_HIDE
+    flags = idaapi.PLUGIN_HIDE | idaapi.PLUGIN_FIX
     comment = "Package Manager"
     help = "Package Manager for IDA Pro"
     wanted_name = "Package Manager"
@@ -24,7 +25,7 @@ class PackageManager(idaapi.plugin_t):
             package.load()
 
     def init(self):
-        PackageManager._load_all_plugins()
+        prepare_virtualenv(callback=PackageManager._load_all_plugins)
         return idaapi.PLUGIN_OK
 
     def run(self, arg):
