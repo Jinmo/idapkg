@@ -3,31 +3,34 @@ import traceback
 from StringIO import StringIO
 
 from .package import InstallablePackage
-from ..config import initial_config
+from ..config import g
 from ..downloader import download_multi
 
 
+TIMEOUT = 8
+
 def get_online_packages(repos=None):
     if repos is None:
-        repos = initial_config['repos']
+        repos = g['repos']
 
     results = []
+    endpoint = '/plugins'
 
     def collector(res, repo_url):
+        repo_url = repo_url[:-len(endpoint)]
         try:
             if res is None:
                 raise Exception('connection error')
             r = json.load(res)
-            base = r['base']
             assert isinstance(r['data'], list)
             results.append((InstallablePackage(
-                name=item['name'], path=item['id'], version=item['version'], base=base) for item in r['data']))
+                name=item['name'], path=item['id'], version=item['version'], base=repo_url) for item in r['data']))
         except:
             io = StringIO()
             traceback.print_exc(file=io)
             print 'Error fetching repo: %r\n%s' % (repo_url, io.getvalue())
 
-    download_multi(repos, collector)
+    download_multi([x+endpoint for x in repos], collector, timeout=TIMEOUT)
 
     result = []
     for generator in results:

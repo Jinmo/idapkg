@@ -1,18 +1,18 @@
 import json
 import os
+import copy
 
 try:
     import idaapi
-    prefix = os.path.join(idaapi.get_user_idadir())
 except ImportError:
-    idaapi = None
-    prefix = os.path.expanduser('~/palette_test')
+    raise Exception("You must run package manager in IDA Pro!")
 
-CONFIG_PATH = os.path.join(prefix, 'packages_config.json')
+BASEDIR = os.path.expanduser('~/idapkg')
+CONFIG_PATH = os.path.join(BASEDIR, 'config.json')
 
 
 def idapkg_dir(*suffixes):
-    path = os.path.join(prefix, *suffixes)
+    path = os.path.join(BASEDIR, *suffixes)
     if not os.path.isdir(path):
         os.makedirs(path)
     return path
@@ -23,7 +23,8 @@ def load_config():
 
 
 def save_config(g):
-    json.dump(g, open(CONFIG_PATH, 'wb'))
+    with open(CONFIG_PATH, 'wb') as f:
+        json.dump(g, f, indent=4)
 
 
 def _normalized_type(obj):
@@ -40,42 +41,45 @@ def _fix_missing_config(obj, reference, path=None):
         path = []
 
     changed = False
-    obj = dict(obj)
+    obj = copy.deepcopy(obj)
 
     for k, v in reference.items():
         if k not in obj:
             changed = True
-            obj[k] = v
+            obj[k] = copy.deepcopy(v)
         else:
             t1 = _normalized_type(obj[k])
             t2 = _normalized_type(reference[k])
             if t1 != t2:
                 changed = True
-                obj[k] = v
+                obj[k] = copy.deepcopy(v)
                 print 'Type is different (%r): %r (saved) vs %r, replacing with initial value %r' % (
                     ''.join(path), t1, t2, v)
         if isinstance(obj[k], dict):
-            changed_, obj[k] = _fix_missing_config(obj, v, path + [k])
+            changed_, obj[k] = _fix_missing_config(obj[k], v, path + [k])
             changed = changed or changed_
 
     return changed, obj
 
 
-initial_config = {
+__initial_config = {
     'path': {
-        'plugins': idapkg_dir('plugins', 'plugins'),
-        'virtualenv': idapkg_dir('python')
+        'virtualenv': idapkg_dir('python'),
+        'packages': idapkg_dir('packages')
     },
     'repos': [
-        'https://0e1.kr/p/plugins.json'
+        'https://api.idapkg.com'
     ]
 }
+
+# Step 1. create configuration
 try:
     g = load_config()
-    config_changed, g = _fix_missing_config(g, initial_config)
+    config_changed, g = _fix_missing_config(g, __initial_config)
     if config_changed:
         save_config(g)
 except (IOError, ValueError):
     # save initial config
     print 'Generating inital config at', CONFIG_PATH
-    save_config(initial_config)
+    g = copy.deepcopy(__initial_config)
+    save_config(__initial_config)

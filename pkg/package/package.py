@@ -2,12 +2,15 @@ import json
 import os
 import re
 import sys
+import glob
+import ctypes
 import zipfile
+import urllib2
+import PyQt5.QtCore
+import PyQt5.QtWidgets
 from StringIO import StringIO
 
-from semantic_version import Spec, Version
-
-from ..config import initial_config
+from ..config import g
 from ..downloader import download
 from ..logger import logger
 
@@ -18,6 +21,93 @@ current_ea = -1
 current_os = 'unknown'
 current_ver = '0.0'
 
+
+class Worker(PyQt5.QtCore.QObject):
+    work = PyQt5.QtCore.pyqtSignal()
+
+def execute_in_main_thread(func):
+    signal_source = Worker()
+    signal_source.moveToThread(PyQt5.QtWidgets.qApp.thread())
+    signal_source.work.connect(func)
+    signal_source.work.emit()
+
+
+def get_extlangs():
+    ea_name = 'ida64' if current_ea == 64 else 'ida'
+    if current_os == 'win':
+        functype = ctypes.WINFUNCTYPE
+        lib = getattr(ctypes.windll, ea_name)
+    else:
+        functype = ctypes.CFUNCTYPE
+        lib = getattr(ctypes.cdll, 'lib' + ea_name)
+
+    class extlang_t(ctypes.Structure):
+        _fields_ = [
+        ('size', ctypes.c_size_t),
+        ('flags', ctypes.c_uint),
+        ('refcnt', ctypes.c_int),
+        ('name', ctypes.c_char_p),
+        ('fileext', ctypes.c_char_p),
+        ('highlighter', ctypes.c_void_p)
+        ]
+
+    functype = functype(ctypes.c_size_t, (ctypes.c_void_p), ctypes.POINTER(extlang_t))
+
+    class extlang_visitor_t(ctypes.Structure):
+        _fields_ = [
+            ('vtable', ctypes.POINTER(functype))
+        ]
+
+    res = []
+
+    @functype
+    def visitor(self, extlang):
+        extlang = extlang[0]
+        k=ctypes.windll.kernel32
+        new_extlang = extlang_t(
+            extlang.size,
+            extlang.flags,
+            extlang.refcnt,
+            str(extlang.name),
+            str(extlang.fileext),
+            None # not supported
+            )
+        res.append(new_extlang)
+        return 0
+    
+    vtable = (functype * 1)()
+    vtable[0] = visitor
+
+    visitor = extlang_visitor_t()
+    visitor.vtable = vtable
+
+    lib.for_all_extlangs(ctypes.pointer(visitor), False)
+    return res
+
+def get_native_suffix():
+    if current_os == 'win':
+        suffix = '.dll'
+    elif current_os == 'linux':
+        suffix = '.so'
+    elif current_os == 'mac':
+        suffix = '.dylib'
+    return suffix
+
+def idausr_join_unix(orig, new):
+    if orig == None:
+        orig = os.path.join(os.getenv('HOME'), '.idapro')
+    return ':'.join([orig, new])
+
+def idausr_join_win(orig, new):
+    if orig == None:
+        orig = os.path.join(os.getenv('APPDATA'), 'Hex-Rays', 'IDA Pro')
+    return ';'.join([orig, new])
+
+def idausr_join(orig, new):
+    if current_os == 'win':
+        return idausr_join_win(orig, new)
+    else:
+        return idausr_join_unix(orig, new)
 
 class Package(object):
     def __init__(self, name, path, version):
@@ -33,15 +123,6 @@ class Package(object):
 
     def fetch(self, url):
         raise NotImplementedError
-
-    @staticmethod
-    def validate_info(info):
-        assert 'name' in info
-        assert 'version' in info
-        assert 'entry' in info
-
-        # TODO: apply json schema
-        assert isinstance(info['entry'], list)
 
     def __repr__(self):
         return '<%s name=%r path=%r version=%r>' % (self.__class__.__name__, self.name, self.path, self.version)
@@ -106,13 +187,27 @@ class LocalPackage(Package):
 
     def load(self):
         import ida_loader
+        env = idausr_join(os.getenv('IDAUSR'), self.path)
+        os.putenv('IDAUSR', env)
+        os.environ['IDAUSR'] = env
 
-        entry = select_entry(self.info()['entry'])
-        assert entry, "Entry not found"
-        logger.info('Loading %r' % entry)
+        def handler():
+            # Load plugins immediately (processors / loaders will be loaded on demand)
+            for suffix in ['.' + x.fileext for x in get_extlangs()]:
+                for path in glob.glob(os.path.join(self.path, 'plugins', '*' + suffix)):
+                    ida_loader.load_plugin(str(path))
 
-        entry_path = os.path.join(self.path, entry)
-        ida_loader.load_plugin(str(entry_path))
+            for suffix in (get_native_suffix(), ):
+                for path in glob.glob(os.path.join(self.path, 'plugins', '*' + suffix)):
+                    if path[:-len(suffix)][-2:] == '64':
+                        is64 = True
+                    else:
+                        is64 = False
+                    if is64 == (current_ea == 64):
+                        print path
+                        ida_loader.load_plugin(str(path))
+
+        execute_in_main_thread(handler)
 
     def info(self):
         with open(os.path.join(self.path, 'info.json'), 'rb') as f:
@@ -121,7 +216,7 @@ class LocalPackage(Package):
     @staticmethod
     def by_name(name, prefix=None):
         if prefix is None:
-            prefix = initial_config['path']['plugins']
+            prefix = g['path']['packages']
 
         path = os.path.join(prefix, name)
 
@@ -143,7 +238,7 @@ class LocalPackage(Package):
 
     @staticmethod
     def all():
-        prefix = initial_config['path']['plugins']
+        prefix = g['path']['packages']
 
         res = os.listdir(prefix)
         res = filter(lambda x: os.path.isdir(os.path.join(prefix, x)), res)
@@ -159,23 +254,20 @@ class InstallablePackage(Package):
 
     def install(self):
         logger.info('Downloading...')
-        data = self.fetch(self.base + self.path)
+        data = download(self.base + '/download?spec=' + urllib2.quote(self.path)).read()
         io = StringIO(data)
 
-        logger.info('Validating...')
         install_path = os.path.join(
-            initial_config['path']['plugins'],
+            g['path']['packages'],
             self.path
         )
 
         with zipfile.ZipFile(io, 'r') as f:
             with f.open('info.json') as j:
                 info = json.load(j)
-                Package.validate_info(info)
-            f.extractall(install_path)
 
             logger.info('Extracting into %r...' % install_path)
-            assert os.path.isfile(os.path.join(install_path, 'info.json'))
+            f.extractall(install_path)
 
         removed = os.path.join(install_path, '.removed')
         if os.path.isfile(removed):
@@ -189,30 +281,25 @@ class InstallablePackage(Package):
     def remove(self):
         raise NotImplementedError
 
-    def fetch(self, url):
-        logger.info('Fetching from %r' % url)
-        r = download(url)
-        assert r.status / 100 == 2, '2xx status required'
-        return r.read()
-
     @staticmethod
-    def install_from_url(name, url):
+    def install_from_url(url):
         # Just reimplementation
         logger.info('Downloading...')
         data = download(url).read()
         io = StringIO(data)
 
         logger.info('Validating...')
-        install_path = os.path.join(
-            initial_config['path']['plugins'],
-            name
-        )
         info = None
 
         with zipfile.ZipFile(io, 'r') as f:
             with f.open('info.json') as j:
                 info = json.load(j)
-                Package.validate_info(info)
+                name = info['_id']
+
+            install_path = os.path.join(
+                g['path']['packages'],
+                name
+            )
 
             f.extractall(install_path)
 
@@ -223,7 +310,7 @@ class InstallablePackage(Package):
         if os.path.isfile(removed):
             os.unlink(removed)
 
-        pkg = LocalPackage(str(name), install_path, info['version'])
+        pkg = LocalPackage(name, install_path, info['version'])
         pkg.load()
 
         return pkg

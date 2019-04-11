@@ -16,7 +16,7 @@ class PackageManager(idaapi.plugin_t):
     flags = idaapi.PLUGIN_HIDE | idaapi.PLUGIN_FIX
     comment = "Package Manager"
     help = "Package Manager for IDA Pro"
-    wanted_name = "Package Manager"
+    wanted_name = "idapkg"
     wanted_hotkey = ""
 
     @staticmethod

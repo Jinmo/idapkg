@@ -97,6 +97,7 @@ def prepare_virtualenv(path=None, callback=None):
             raise ImportError()
 
         execfile(activator_path, {'__file__': activator_path})
+        callback()
     except ImportError:
         logger.info(
             'Will install virtualenv at %r since the module is not found...' % path)
