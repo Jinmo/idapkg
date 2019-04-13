@@ -1,4 +1,7 @@
 import threading
+import ctypes
+import sys
+import os
 
 import idaapi
 
@@ -40,3 +43,11 @@ def __work(f):
     t = threading.Thread(target=f)
     t.start()
     return t
+
+
+def putenv(key, value):
+    os.putenv(key, value)
+    os.environ[key] = value
+
+    if sys.platform == 'win32':
+        ctypes.windll.ucrtbase._putenv('='.join((key, value)))

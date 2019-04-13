@@ -1,29 +1,28 @@
 import json
 import os
-import re
-import sys
 import glob
-import ctypes
 import zipfile
 import urllib2
 import PyQt5.QtCore
 import PyQt5.QtWidgets
+import ida_loader
 from StringIO import StringIO
 
 from ..config import g
 from ..downloader import download
 from ..logger import logger
+from ..env import ea as current_ea, os as current_os, version as current_ver
+from ..util import putenv
+
+from .internal_api import get_extlangs, invalidate_proccache, invalidate_idadir
 
 ALL_EA = (32, 64)
-OS_MAP = {'win32': 'win', 'darwin': 'mac', 'linux2': 'linux'}
-
-current_ea = -1
-current_os = 'unknown'
-current_ver = '0.0'
+supported_os = ('win', 'mac', 'linux', "!win", "!mac", "!linux")
 
 
 class Worker(PyQt5.QtCore.QObject):
     work = PyQt5.QtCore.pyqtSignal()
+
 
 def execute_in_main_thread(func):
     signal_source = Worker()
@@ -31,58 +30,6 @@ def execute_in_main_thread(func):
     signal_source.work.connect(func)
     signal_source.work.emit()
 
-
-def get_extlangs():
-    ea_name = 'ida64' if current_ea == 64 else 'ida'
-    if current_os == 'win':
-        functype = ctypes.WINFUNCTYPE
-        lib = getattr(ctypes.windll, ea_name)
-    else:
-        functype = ctypes.CFUNCTYPE
-        lib = getattr(ctypes.cdll, 'lib' + ea_name)
-
-    class extlang_t(ctypes.Structure):
-        _fields_ = [
-        ('size', ctypes.c_size_t),
-        ('flags', ctypes.c_uint),
-        ('refcnt', ctypes.c_int),
-        ('name', ctypes.c_char_p),
-        ('fileext', ctypes.c_char_p),
-        ('highlighter', ctypes.c_void_p)
-        ]
-
-    functype = functype(ctypes.c_size_t, (ctypes.c_void_p), ctypes.POINTER(extlang_t))
-
-    class extlang_visitor_t(ctypes.Structure):
-        _fields_ = [
-            ('vtable', ctypes.POINTER(functype))
-        ]
-
-    res = []
-
-    @functype
-    def visitor(self, extlang):
-        extlang = extlang[0]
-        k=ctypes.windll.kernel32
-        new_extlang = extlang_t(
-            extlang.size,
-            extlang.flags,
-            extlang.refcnt,
-            str(extlang.name),
-            str(extlang.fileext),
-            None # not supported
-            )
-        res.append(new_extlang)
-        return 0
-    
-    vtable = (functype * 1)()
-    vtable[0] = visitor
-
-    visitor = extlang_visitor_t()
-    visitor.vtable = vtable
-
-    lib.for_all_extlangs(ctypes.pointer(visitor), False)
-    return res
 
 def get_native_suffix():
     if current_os == 'win':
@@ -93,21 +40,40 @@ def get_native_suffix():
         suffix = '.dylib'
     return suffix
 
+
 def idausr_join_unix(orig, new):
     if orig == None:
         orig = os.path.join(os.getenv('HOME'), '.idapro')
     return ':'.join([orig, new])
+
 
 def idausr_join_win(orig, new):
     if orig == None:
         orig = os.path.join(os.getenv('APPDATA'), 'Hex-Rays', 'IDA Pro')
     return ';'.join([orig, new])
 
+
 def idausr_join(orig, new):
     if current_os == 'win':
         return idausr_join_win(orig, new)
     else:
         return idausr_join_unix(orig, new)
+
+
+def idausr_remove(orig, target):
+    if current_os == 'win':
+        sep = ';'
+    else:
+        sep = ':'
+
+    orig = orig.split(sep)
+    index = orig.index(target)
+
+    assert index != -1
+
+    orig.remove(target)
+    return sep.join(orig)
+
 
 class Package(object):
     def __init__(self, name, path, version):
@@ -125,7 +91,8 @@ class Package(object):
         raise NotImplementedError
 
     def __repr__(self):
-        return '<%s name=%r path=%r version=%r>' % (self.__class__.__name__, self.name, self.path, self.version)
+        return '<%s name=%r path=%r version=%r>' % \
+            (self.__class__.__name__, self.name, self.path, self.version)
 
 
 def check_version(cur_version_str, expr):
@@ -140,8 +107,8 @@ def check_os(os_str, expr):
     if len(expr) == 1 and '*' in expr:
         return True
     else:
-        assert all(item in ('win', 'mac', 'linux', "!win", "!mac", "!linux")
-                   for item in expr), '"os" specifiers must be one of os or !os; os: %r' % OS_MAP.values()
+        assert all(item in supported_os for item in expr), \
+            '"os" specifiers must be one of os or !os; os: %r' % OS_MAP.values()
         assert len(set(expr)) == len(expr), '"os" specifiers must be unique'
 
         positive = []
@@ -175,37 +142,78 @@ class LocalPackage(Package):
     def __init__(self, name, path, version):
         super(LocalPackage, self).__init__(name, path, version)
 
-    def install(self):
-        raise NotImplementedError
+        self.path = os.path.normpath(path)
 
     def remove(self):
         with open(os.path.join(self.path, '.removed'), 'wb'):
             pass
 
+        idausr = os.environ.get('IDAUSR', '')
+        if self.path in idausr:
+            new = idausr_remove(idausr, self.path)
+            putenv('IDAUSR', new)
+
     def fetch(self, url):
         return open(url, 'rb').read()
 
+    def install(self):
+        orig_cwd = os.getcwd()
+        try:
+            os.chdir(self.path)
+            info = self.info()
+            t = info.get('installers', [])
+            if not isinstance(t, list):
+                raise Exception(
+                    '%r Corrupted package: installers key is not list')
+            for script in t:
+                logger.info('Executing installer path %r...' % script)
+                script = os.path.join(self.path, script)
+                execfile(script, {
+                    __file__: script
+                })
+            logger.info('Done!')
+        except:
+            # TODO: implement rollback if needed
+            logger.info('Installer failed!')
+            self.remove()
+            raise
+        finally:
+            os.chdir(orig_cwd)
+
     def load(self):
-        import ida_loader
-        env = idausr_join(os.getenv('IDAUSR'), self.path)
-        os.putenv('IDAUSR', env)
-        os.environ['IDAUSR'] = env
+        if self.path in os.environ.get('IDAUSR', ''):
+            # Already loaded
+            return
+
+        env = str(idausr_join(os.getenv('IDAUSR'), self.path))
 
         def handler():
-            # Load plugins immediately (processors / loaders will be loaded on demand)
-            for suffix in ['.' + x.fileext for x in get_extlangs()]:
-                for path in glob.glob(os.path.join(self.path, 'plugins', '*' + suffix)):
-                    ida_loader.load_plugin(str(path))
+            # Load plugins immediately
+            # processors / loaders will be loaded on demand
+            def find_loadable_modules(path, callback):
+                for suffix in ['.' + x.fileext for x in get_extlangs()]:
+                    for path in glob.glob(os.path.join(self.path, path, '*' + suffix)):
+                        callback(str(path))
 
-            for suffix in (get_native_suffix(), ):
-                for path in glob.glob(os.path.join(self.path, 'plugins', '*' + suffix)):
-                    if path[:-len(suffix)][-2:] == '64':
-                        is64 = True
-                    else:
-                        is64 = False
-                    if is64 == (current_ea == 64):
-                        print path
-                        ida_loader.load_plugin(str(path))
+                for suffix in (get_native_suffix(), ):
+                    for path in glob.glob(os.path.join(self.path, path, '*' + suffix)):
+                        if path[:-len(suffix)][-2:] == '64':
+                            is64 = True
+                        else:
+                            is64 = False
+                        if is64 == (current_ea == 64):
+                            print path
+                            callback(str(path))
+            find_loadable_modules('plugins', ida_loader.load_plugin)
+            invalidates = []
+            find_loadable_modules('procs', invalidates.append)
+
+            if invalidates:
+                invalidate_proccache()
+
+            invalidate_idadir()
+
+            putenv('IDAUSR', env)
 
         execute_in_main_thread(handler)
 
@@ -254,7 +262,8 @@ class InstallablePackage(Package):
 
     def install(self):
         logger.info('Downloading...')
-        data = download(self.base + '/download?spec=' + urllib2.quote(self.path)).read()
+        data = download(self.base + '/download?spec=' +
+                        urllib2.quote(self.path)).read()
         io = StringIO(data)
 
         install_path = os.path.join(
@@ -274,6 +283,7 @@ class InstallablePackage(Package):
             os.unlink(removed)
 
         pkg = LocalPackage(str(self.name), install_path, self.version)
+        pkg.install()
         pkg.load()
 
         return pkg
@@ -311,41 +321,13 @@ class InstallablePackage(Package):
             os.unlink(removed)
 
         pkg = LocalPackage(name, install_path, info['version'])
+        pkg.install()
         pkg.load()
 
         return pkg
 
 
-def __load_version_from_ida():
-    global current_ea, current_os, current_ver
-    if idc.__EA64__:
-        current_ea = 64
-    else:
-        current_ea = 32
-
-    current_os = OS_MAP[sys.platform]
-    current_ver = idaapi.get_kernel_version()
-
-    current_ver = re.sub(r'^(\d.)0(\d.*)', r'\1\2', current_ver)
-
-
-try:
-    import idc
-    import idaapi
-
-    __load_version_from_ida()
-
-except ImportError:
-    assert __name__ == '__main__'
-
 if __name__ == '__main__':
-    def set_version(os, ver, ea):
-        global current_os, current_ver, current_ea
-        current_os, current_ver, current_ea = os, ver, ea
-
-
-    set_version('win', '7.0.0', 32)
-
     assert select_entry([{
         'ea': [32],
         'path': 'win32',
