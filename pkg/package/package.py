@@ -3,8 +3,6 @@ import os
 import glob
 import zipfile
 import urllib2
-import PyQt5.QtCore
-import PyQt5.QtWidgets
 import ida_loader
 from StringIO import StringIO
 
@@ -14,21 +12,10 @@ from ..logger import logger
 from ..env import ea as current_ea, os as current_os, version as current_ver
 from ..util import putenv
 
-from .internal_api import get_extlangs, invalidate_proccache, invalidate_idadir
+from .internal_api import get_extlangs, invalidate_proccache, invalidate_idadir, execute_in_main_thread
 
 ALL_EA = (32, 64)
 supported_os = ('win', 'mac', 'linux', "!win", "!mac", "!linux")
-
-
-class Worker(PyQt5.QtCore.QObject):
-    work = PyQt5.QtCore.pyqtSignal()
-
-
-def execute_in_main_thread(func):
-    signal_source = Worker()
-    signal_source.moveToThread(PyQt5.QtWidgets.qApp.thread())
-    signal_source.work.connect(func)
-    signal_source.work.emit()
 
 
 def get_native_suffix():

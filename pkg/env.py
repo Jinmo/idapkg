@@ -46,6 +46,17 @@ def __load_ida_native_version():
 
             version = version[:version.rfind(
                 '.')] + version[version.rfind('.')+1:]
+    elif os == 'mac':
+        path = _os.path.join(sysdir, exe_name)
+        with open(path, 'rb') as f:
+            data = f.read()
+            needle = '<key>CFBundleShortVersionString</key>'
+            offset = data.rfind(needle)
+            offset = data.find('<string>', offset) + 8
+            offset2 = data.find('</string', offset)
+            version = data[offset:offset2]
+
+    # print version
 
     version_info = version_info_cls._make(map(int, version.split('.')))
     return version_info

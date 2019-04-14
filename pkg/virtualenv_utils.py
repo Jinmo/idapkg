@@ -91,7 +91,7 @@ def prepare_virtualenv(path=None, callback=None):
     abspath = os.path.abspath(path)
     sys.path.insert(0, abspath)
     try:
-        activator_path = os.path.join(abspath, 'Scripts', 'activate_this.py')
+        activator_path = os.path.join(abspath, 'Scripts' if sys.platform == 'win32' else 'bin', 'activate_this.py')
 
         if not os.path.isfile(activator_path):
             raise ImportError()
