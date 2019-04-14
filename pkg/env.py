@@ -3,12 +3,14 @@ import re
 import collections
 import os as _os
 
+from decimal import Decimal
+
 OS_MAP = {'win32': 'win', 'darwin': 'mac', 'linux2': 'linux'}
 
 # Will be set from IDA Pro
 ea = -1
 os = 'unknown'
-version = '0.0'
+version = Decimal('0.0')
 version_info = None
 
 
@@ -23,6 +25,7 @@ def __load_version_from_ida():
     version = idaapi.get_kernel_version()
 
     version = re.sub(r'^(\d.)0(\d.*)', r'\1\2', version)
+    version = Decimal(version)
 
 
 version_info_cls = collections.namedtuple('VersionPair', 'major minor micro')

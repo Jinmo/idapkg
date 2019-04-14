@@ -24,7 +24,7 @@ def get_online_packages(repos=None):
             r = json.load(res)
             assert isinstance(r['data'], list)
             results.append((InstallablePackage(
-                name=item['name'], path=item['id'], version=item['version'], base=repo_url) for item in r['data']))
+                name=item['name'], path=item['id'], version=item['version'], repo=repo_url) for item in r['data']))
         except:
             io = StringIO()
             traceback.print_exc(file=io)

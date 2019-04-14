@@ -8,7 +8,7 @@ from pkg.util import __work
 
 
 def install(spec, repo):
-    return __work(lambda: InstallablePackage.install_from_url(repo + '/download?spec=' + urllib2.quote(spec)))
+    return __work(lambda: InstallablePackage.install_from_repo(repo, spec))
 
 
 def remove(name):

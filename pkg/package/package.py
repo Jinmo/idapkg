@@ -248,44 +248,19 @@ class LocalPackage(Package):
 
 
 class InstallablePackage(Package):
-    def __init__(self, name, path, version, base):
+    def __init__(self, name, path, version, repo):
         super(InstallablePackage, self).__init__(name, path, version)
-        self.base = base
+        self.repo = repo
 
     def install(self):
-        logger.info('Downloading...')
-        data = download(self.base + '/download?spec=' +
-                        urllib2.quote(self.path)).read()
-        io = StringIO(data)
-
-        install_path = os.path.join(
-            g['path']['packages'],
-            self.path
-        )
-
-        with zipfile.ZipFile(io, 'r') as f:
-            with f.open('info.json') as j:
-                info = json.load(j)
-
-            logger.info('Extracting into %r...' % install_path)
-            f.extractall(install_path)
-
-        removed = os.path.join(install_path, '.removed')
-        if os.path.isfile(removed):
-            os.unlink(removed)
-
-        pkg = LocalPackage(str(self.name), install_path, self.version)
-        pkg.install()
-        pkg.load()
-
-        return pkg
+        InstallablePackage.install_from_repo(self.repo, self.path)
 
     def remove(self):
         raise NotImplementedError
 
     @staticmethod
-    def install_from_url(url):
-        # Just reimplementation
+    def install_from_repo(repo, spec):
+        url = repo + '/download?spec=' + urllib2.quote(spec)
         logger.info('Downloading...')
         data = download(url).read()
         io = StringIO(data)
@@ -313,6 +288,12 @@ class InstallablePackage(Package):
             os.unlink(removed)
 
         pkg = LocalPackage(name, install_path, info['version'])
+
+        # First, install dependencies. This is blocking job!
+        # TODO: add version check, is this only for same repo?
+        for dep_name, dep_spec in info.get('dependencies', {}).items():
+            InstallablePackage.install_from_repo(repo, dep_name)
+
         pkg.install()
         pkg.load()
 
