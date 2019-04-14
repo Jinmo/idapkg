@@ -18,24 +18,7 @@ def _locate_python_win():
     # Supporting 2.7 only
     assert sys.version_info[:2] == (2, 7)
 
-    # no need to visit Wow6432Node since it's done automatically
-    subkey = r"SOFTWARE\Python\PythonCore\2.7\InstallPath"
-
-    for key in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
-        try:
-            key = winreg.OpenKey(key, subkey)
-            value = winreg.QueryValue(key, None)
-            # check if registry value type is string
-            if not isinstance(value, basestring):
-                continue
-
-            value = os.path.join(value, "python.exe")
-
-            if not os.path.exists(value):
-                continue
-            return value
-        except WindowsError:
-            continue
+    return os.path.join(sys.exec_prefix, 'python.exe')
 
 
 def _locate_python():
@@ -44,8 +27,9 @@ def _locate_python():
     elif sys.platform == 'darwin':
         executable = sys.executable
     elif sys.platform == 'linux':
-        # TODO: support linux version
-        assert False
+        # TODO: test linux version
+        logger.info('Linux virtualenv support is not tested. If this prints "Done!", it\'s working!')
+        executable = sys.executable
     else:
         assert False, "this platform is not supported"
     return executable
@@ -97,7 +81,7 @@ def prepare_virtualenv(path=None, callback=None):
             raise ImportError()
 
         execfile(activator_path, {'__file__': activator_path})
-        callback()
+        callback and callback()
     except ImportError:
         logger.info(
             'Will install virtualenv at %r since the module is not found...' % path)
