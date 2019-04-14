@@ -41,16 +41,21 @@ def get_native_suffix():
     return suffix
 
 
+def uniq(items):
+    seen = set()
+    res = [(item, seen.add(item))[0] for item in items if item not in seen]
+    return res
+
 def idausr_join_unix(orig, new):
     if orig == None:
         orig = os.path.join(os.getenv('HOME'), '.idapro')
-    return ':'.join([orig, new])
+    return ':'.join(uniq(orig.split(':') + [new]))
 
 
 def idausr_join_win(orig, new):
     if orig == None:
         orig = os.path.join(os.getenv('APPDATA'), 'Hex-Rays', 'IDA Pro')
-    return ';'.join([orig, new])
+    return ';'.join(uniq(orig.split(';') + [new]))
 
 
 def idausr_join(orig, new):
