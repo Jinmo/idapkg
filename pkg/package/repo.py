@@ -28,7 +28,7 @@ def get_online_packages(repos=None):
         except:
             io = StringIO()
             traceback.print_exc(file=io)
-            print 'Error fetching repo: %r\n%s' % (repo_url, io.getvalue())
+            logger.error('Error fetching repo: %r\n%s' % (repo_url, io.getvalue()))
 
     download_multi([x+endpoint for x in repos], collector, timeout=TIMEOUT)
 

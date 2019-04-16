@@ -59,8 +59,6 @@ def __load_ida_native_version():
             offset2 = data.find('</string', offset)
             version = data[offset:offset2]
 
-    # print version
-
     version_info = version_info_cls._make(map(int, version.split('.')))
     return version_info
 

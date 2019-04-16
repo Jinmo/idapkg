@@ -4,6 +4,8 @@ import sys
 import os
 
 import idaapi
+import PyQt5.QtCore
+import PyQt5.QtWidgets
 
 
 # Helper for registering actions
@@ -51,3 +53,14 @@ def putenv(key, value):
 
     if sys.platform == 'win32':
         ctypes.windll.ucrtbase._putenv('='.join((key, value)))
+
+
+class Worker(PyQt5.QtCore.QObject):
+    work = PyQt5.QtCore.pyqtSignal()
+
+
+def execute_in_main_thread(func):
+    signal_source = Worker()
+    signal_source.moveToThread(PyQt5.QtWidgets.qApp.thread())
+    signal_source.work.connect(func)
+    signal_source.work.emit()

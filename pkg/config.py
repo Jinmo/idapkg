@@ -1,5 +1,6 @@
-import json
 import os
+import sys
+import json
 import copy
 
 try:
@@ -7,7 +8,7 @@ try:
 except ImportError:
     raise Exception("You must run package manager in IDA Pro!")
 
-BASEDIR = os.path.expanduser('~/idapkg')
+BASEDIR = os.path.expanduser('~/idapkg').replace('/', '/' if sys.platform != 'win32' else '\\')
 CONFIG_PATH = os.path.join(BASEDIR, 'config.json')
 
 

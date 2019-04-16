@@ -1,5 +1,6 @@
-import json
 import os
+import sys
+import json
 import glob
 import zipfile
 import urllib2
@@ -10,12 +11,11 @@ from ..config import g
 from ..downloader import download
 from ..logger import logger
 from ..env import ea as current_ea, os as current_os, version as current_ver
-from ..util import putenv
+from ..util import putenv, execute_in_main_thread
 
-from .internal_api import get_extlangs, invalidate_proccache, invalidate_idadir, execute_in_main_thread
+from . import internal_api
 
 ALL_EA = (32, 64)
-supported_os = ('win', 'mac', 'linux', "!win", "!mac", "!linux")
 
 
 def get_native_suffix():
@@ -33,23 +33,24 @@ def uniq(items):
     res = [(item, seen.add(item))[0] for item in items if item not in seen]
     return res
 
-def idausr_join_unix(orig, new):
+
+def _idausr_add_unix(orig, new):
     if orig == None:
         orig = os.path.join(os.getenv('HOME'), '.idapro')
     return ':'.join(uniq(orig.split(':') + [new]))
 
 
-def idausr_join_win(orig, new):
+def _idausr_add_win(orig, new):
     if orig == None:
         orig = os.path.join(os.getenv('APPDATA'), 'Hex-Rays', 'IDA Pro')
     return ';'.join(uniq(orig.split(';') + [new]))
 
 
-def idausr_join(orig, new):
+def _idausr_add(orig, new):
     if current_os == 'win':
-        return idausr_join_win(orig, new)
+        return _idausr_add_win(orig, new)
     else:
-        return idausr_join_unix(orig, new)
+        return _idausr_add_unix(orig, new)
 
 
 def idausr_remove(orig, target):
@@ -87,32 +88,13 @@ class Package(object):
             (self.__class__.__name__, self.name, self.path, self.version)
 
 
+# TODO: use some of check_* for matching dependency version
 def check_version(cur_version_str, expr):
-    spec = Spec(expr)
-    return spec.match(Version.coerce(cur_version_str))
+    pass
 
 
 def check_os(os_str, expr):
-    if isinstance(expr, basestring):
-        expr = [expr]
-
-    if len(expr) == 1 and '*' in expr:
-        return True
-    else:
-        assert all(item in supported_os for item in expr), \
-            '"os" specifiers must be one of os or !os; os: %r' % OS_MAP.values()
-        assert len(set(expr)) == len(expr), '"os" specifiers must be unique'
-
-        positive = []
-        negative = []
-        for item in expr:
-            if item.startswith('!'):
-                negative.append(item[1:])
-            else:
-                positive.append(item)
-
-        result = os_str in positive and os_str not in negative
-        return result
+    pass
 
 
 def select_entry(entry):
@@ -145,6 +127,8 @@ class LocalPackage(Package):
             new = idausr_remove(idausr, self.path)
             putenv('IDAUSR', new)
 
+            invalidate_idausr()
+
     def fetch(self, url):
         return open(url, 'rb').read()
 
@@ -174,38 +158,44 @@ class LocalPackage(Package):
 
     def load(self):
         if self.path in os.environ.get('IDAUSR', ''):
-            # Already loaded
+            # Already loaded, just update sys.path for python imports
+            sys.path.append(self.path)
             return
 
-        env = str(idausr_join(os.getenv('IDAUSR'), self.path))
+        env = str(_idausr_add(os.getenv('IDAUSR'), self.path))
 
         def handler():
             # Load plugins immediately
             # processors / loaders will be loaded on demand
             def find_loadable_modules(path, callback):
-                for suffix in ['.' + x.fileext for x in get_extlangs()]:
-                    for path in glob.glob(os.path.join(self.path, path, '*' + suffix)):
+                for suffix in ['.' + x.fileext for x in internal_api.get_extlangs()]:
+                    expr = os.path.join(self.path, path, '*' + suffix)
+                    for path in glob.glob(expr):
                         callback(str(path))
 
                 for suffix in (get_native_suffix(), ):
-                    for path in glob.glob(os.path.join(self.path, path, '*' + suffix)):
-                        if path[:-len(suffix)][-2:] == '64':
-                            is64 = True
-                        else:
-                            is64 = False
+                    expr = os.path.join(self.path, path, '*' + suffix)
+                    for path in glob.glob(expr):
+                        is64 = path[:-len(suffix)][-2:] == '64'
+
                         if is64 == (current_ea == 64):
-                            print path
                             callback(str(path))
+
+            # Immediately load compatible plugins
             find_loadable_modules('plugins', ida_loader.load_plugin)
+
+            # Find loadable processor modules, and if exists, invalidate cached process list (proccache).
             invalidates = []
             find_loadable_modules('procs', invalidates.append)
 
             if invalidates:
-                invalidate_proccache()
+                internal_api.invalidate_proccache()
 
-            invalidate_idadir()
-
+            # Update IDAUSR variable
+            internal_api.invalidate_idausr()
             putenv('IDAUSR', env)
+
+            sys.path.append(self.path)
 
         execute_in_main_thread(handler)
 
@@ -260,12 +250,17 @@ class InstallablePackage(Package):
 
     @staticmethod
     def install_from_repo(repo, spec):
+        """
+        This method downloads a package satisfying spec.
+        The function waits until it downloads and installs all of plugins.
+        So I recommend you to run it as separate thread if possible.
+        """
         url = repo + '/download?spec=' + urllib2.quote(spec)
-        logger.info('Downloading...')
+        logger.info('Downloading %s...' % spec)
         data = download(url).read()
         io = StringIO(data)
 
-        logger.info('Validating...')
+        logger.info('Validating %s...' % spec)
         info = None
 
         with zipfile.ZipFile(io, 'r') as f:
@@ -287,6 +282,7 @@ class InstallablePackage(Package):
         if os.path.isfile(removed):
             os.unlink(removed)
 
+        # Initiate LocalPackage object
         pkg = LocalPackage(name, install_path, info['version'])
 
         # First, install dependencies. This is blocking job!
@@ -301,8 +297,5 @@ class InstallablePackage(Package):
 
 
 if __name__ == '__main__':
-    assert select_entry([{
-        'ea': [32],
-        'path': 'win32',
-        'version': '>= 7.0, <=7.2',
-    }]) == 'win32'
+    # TODO: add tests that uses select_entry
+    pass

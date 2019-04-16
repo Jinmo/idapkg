@@ -1,22 +1,9 @@
 import ctypes
 import os
 import idaapi
-import PyQt5.QtCore
-import PyQt5.QtWidgets
 
 from ..env import ea as current_ea, os as current_os, version as current_ver, version_info
 from ..logger import logger
-
-
-class Worker(PyQt5.QtCore.QObject):
-    work = PyQt5.QtCore.pyqtSignal()
-
-
-def execute_in_main_thread(func):
-    signal_source = Worker()
-    signal_source.moveToThread(PyQt5.QtWidgets.qApp.thread())
-    signal_source.work.connect(func)
-    signal_source.work.emit()
 
 
 def ida_lib():
@@ -111,7 +98,7 @@ def invalidate_proccache():
 __possible_to_invalidate = True
 
 
-def invalidate_idadir():
+def invalidate_idausr():
     global __possible_to_invalidate
 
     if not __possible_to_invalidate:

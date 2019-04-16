@@ -3,14 +3,19 @@ import idaapi
 from pkg.package import LocalPackage
 from pkg.virtualenv_utils import prepare_virtualenv
 
+from . import install, config
+
 try:
     # Load actions if ifred(palette module) is installed
     import __palette__
-    import pkg.actions
 except:
     # ifred is not installed, skip adding commands using palette
+    t = install('ifred', 'https://api.idapkg.com')
+    t.join()
+    del t
+finally:
+    import pkg.actions
     pass
-
 
 class PackageManager(idaapi.plugin_t):
     flags = idaapi.PLUGIN_HIDE | idaapi.PLUGIN_FIX
