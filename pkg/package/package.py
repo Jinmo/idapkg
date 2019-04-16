@@ -127,7 +127,7 @@ class LocalPackage(Package):
             new = idausr_remove(idausr, self.path)
             putenv('IDAUSR', new)
 
-            invalidate_idausr()
+            internal_api.invalidate_idausr()
 
     def fetch(self, url):
         return open(url, 'rb').read()
