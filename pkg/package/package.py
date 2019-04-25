@@ -13,7 +13,7 @@ from ..logger import logger
 from ..env import ea as current_ea, os as current_os, version as current_ver
 from ..util import putenv, execute_in_main_thread
 
-from . import internal_api
+from .. import internal_api
 
 ALL_EA = (32, 64)
 
@@ -162,6 +162,8 @@ class LocalPackage(Package):
             sys.path.append(self.path)
             return
 
+        sys.path.append(self.path)
+
         env = str(_idausr_add(os.getenv('IDAUSR'), self.path))
 
         def handler():
@@ -181,6 +183,10 @@ class LocalPackage(Package):
                         if is64 == (current_ea == 64):
                             callback(str(path))
 
+            # Update IDAUSR variable
+            internal_api.invalidate_idausr()
+            putenv('IDAUSR', env)
+
             # Immediately load compatible plugins
             find_loadable_modules('plugins', ida_loader.load_plugin)
 
@@ -190,12 +196,6 @@ class LocalPackage(Package):
 
             if invalidates:
                 internal_api.invalidate_proccache()
-
-            # Update IDAUSR variable
-            internal_api.invalidate_idausr()
-            putenv('IDAUSR', env)
-
-            sys.path.append(self.path)
 
         execute_in_main_thread(handler)
 

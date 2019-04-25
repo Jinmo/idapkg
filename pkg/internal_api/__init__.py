@@ -1,10 +1,26 @@
 import ctypes
 import os
+import traceback
 import idaapi
 
 from ..env import ea as current_ea, os as current_os, version as current_ver, version_info
 from ..logger import logger
+from ..config import g, save_config
 
+from ..process import system
+
+IDADIR = os.path.dirname(os.path.dirname(idaapi.__file__))
+
+
+def ida_lib_path(ea):
+    ea_name = 'ida64' if ea == 64 else 'ida'
+    if current_os == 'win':
+        path = os.path.join(IDADIR, ea_name + ".dll")
+    if current_os == 'mac':
+        path = os.path.join(IDADIR, "lib" + ea_name + ".dylib")
+    if current_os == 'linux':
+        path = os.path.join(IDADIR, "lib" + ea_name + ".so")
+    return os.path.normpath(path)
 
 def ida_lib():
     ea_name = 'ida64' if current_ea == 64 else 'ida'
@@ -13,7 +29,7 @@ def ida_lib():
         lib = getattr(ctypes.windll, ea_name)
     elif current_os == 'mac':
         functype = ctypes.CFUNCTYPE
-        lib = ctypes.CDLL(os.path.join(os.path.dirname(os.path.dirname(idaapi.__file__)), "lib" + ea_name + ".dylib"))
+        lib = ctypes.CDLL(ida_lib_path(current_ea))
     else:
         functype = ctypes.CFUNCTYPE
         lib = getattr(ctypes.cdll, 'lib' + ea_name)
@@ -95,31 +111,55 @@ def invalidate_proccache():
     ptr[1] = ptr[2] = 0
 
 
-__possible_to_invalidate = True
+__possible_to_invalidate = None
 
 
 def invalidate_idausr():
     global __possible_to_invalidate
 
-    if not __possible_to_invalidate:
+    if __possible_to_invalidate is not None:
         return False
 
-    IDADIR_OFFSETS = {
-        (7, 0, 171130): {"win": [0x5e9dc8, 0x5f20d8]},
-        (7, 0, 170914): {"mac": [0x5be118, 0x5c7428]}
-    }
+    already_found = g['idausr_native_bases'][current_ea == 64]
 
-    # Now this is tricky part
     _, lib = ida_lib()
     base = get_lib_base(lib)
 
-    try:
-        offset = IDADIR_OFFSETS[version_info][current_os][current_ea == 64]
-    except KeyError:
-        logger.info(
-            "Loading processors/loaders are not supported in this platform.")
-        __possible_to_invalidate = False
-        return False
+    if already_found:
+        offset = already_found
+    else:
+        # Now this is tricky part
+        # First, try to analyze IDA executable
+        # 1. find "IDAUSR\0" string / 2. find code xref / 3. find return value
+        offset = None
+        path = ida_lib_path(current_ea)
+
+        try:
+            if current_os == 'win':
+                try:
+                    import pefile
+                    import capstone
+                except ImportError:
+                    logger.info('Installing dependencies for analyzing IDAUSR offsets...')
+                    system('pip install pefile capstone')
+
+                from .win import find_idausr_offset
+                offset = find_idausr_offset(path)
+            else:
+                pass
+        except:
+            traceback.print_exc()
+            pass
+        
+        if offset is None:
+            logger.info(
+                "Loading processors/loaders are not supported in this platform.")
+            __possible_to_invalidate = False
+            return False
+        else:
+            __possible_to_invalidate = True
+            g['idausr_native_bases'][current_ea == 64] = offset
+            save_config(g)
 
     # qvector<qstring> *ptr(getenv("IDAUSR").split(";" or ":"))
     # ptr.len = ptr.cap = 0

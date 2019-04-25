@@ -2,7 +2,7 @@ import json
 import traceback
 from StringIO import StringIO
 
-from .package import InstallablePackage
+from .package import InstallablePackage, LocalPackage
 from ..config import g
 from ..downloader import download_multi
 
@@ -24,7 +24,7 @@ def get_online_packages(repos=None):
             r = json.load(res)
             assert isinstance(r['data'], list)
             results.append((InstallablePackage(
-                name=item['name'], path=item['id'], version=item['version'], repo=repo_url) for item in r['data']))
+                name=item['name'], path=item['id'], version=item['version'], repo=repo_url) for item in r['data'] if LocalPackage.by_name(item['id']) is None))
         except:
             io = StringIO()
             traceback.print_exc(file=io)
