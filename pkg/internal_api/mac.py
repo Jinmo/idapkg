@@ -4,7 +4,6 @@ import capstone
 
 def find_idausr_offset(ida_path):
 
-    print 'Loading...'
     ida = lief.parse(ida_path)
 
     cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
@@ -20,7 +19,6 @@ def find_idausr_offset(ida_path):
 
         value = sect.search('IDAUSR')
         if value != 0xffffffffffffffff:
-            print '%x'%sect.virtual_address
             string = sect.virtual_address + imagebase + value
 
     def search(code, addr, offset, size, target):
@@ -37,7 +35,7 @@ def find_idausr_offset(ida_path):
                     break
                 visited[offset] = True
                 if insn.bytes[0] == 0x48 and insn.mnemonic == 'lea':
-                    details = next(csDetails.disasm(insn.bytes, insn.address))
+                    details = next(csDetails.disasm(str(bytearray(insn.bytes)), insn.address))
                     ops = details.operands
                     if ops[1].mem.base == capstone.x86_const.X86_REG_RIP:
                         if target(details):
@@ -66,7 +64,7 @@ def find_idausr_offset(ida_path):
                     return res, cur - i
             cur = code.find(delim, cur + 1)
 
-    func = like_yara('\x84\xc0', lambda insn: insn.address +
+    func = like_yara('\x48\x8d', lambda insn: insn.address +
                      insn.size + insn.operands[1].mem.disp == string)
     ret = like_yara('\xe8', lambda insn: insn.operands[0].reg ==
                     capstone.x86_const.X86_REG_RDI and insn.address != func[0].address, func[1], func[1] + 0x10000)[0]

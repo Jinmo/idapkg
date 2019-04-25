@@ -3,8 +3,6 @@ import capstone
 
 
 def find_idausr_offset(ida_path):
-
-    print 'Loading...'
     ida = lief.parse(ida_path)
 
     cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
@@ -20,7 +18,6 @@ def find_idausr_offset(ida_path):
 
         value = sect.search('IDAUSR')
         if value != 0xffffffffffffffff:
-            print '%x'%sect.virtual_address
             string = sect.virtual_address + imagebase + value
 
     def search(code, addr, offset, size, target):
