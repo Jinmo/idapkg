@@ -70,7 +70,8 @@ __initial_config = {
     },
     'repos': [
         'https://api.idapkg.com'
-    ]
+    ],
+    'idausr_native_bases': [None, None]
 }
 
 # Step 1. create configuration
