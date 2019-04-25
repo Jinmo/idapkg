@@ -62,4 +62,4 @@ See [Writing a package (link)](https://idapkg.com/getting-started).
 
 ## TODO
 
-Currently finding way to reliably and generally [update `IDAUSR` variable on all platforms](https://github.com/Jinmo/idapkg/blob/master/pkg/internal_api/win.py). Currently only supporting Windows.
+Currently finding way to reliably and generally [update `IDAUSR` variable on all platforms](https://github.com/Jinmo/idapkg/blob/master/pkg/internal_api/win.py). Currently only supporting Windows and Mac OS X.

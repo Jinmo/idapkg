@@ -6,9 +6,8 @@ from .util import __work
 from .logger import logger
 
 # extracted from https://pypi.org/simple/virtualenv/
-VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/33/5d/' \
-                 '314c760d4204f64e4a968275182b7751bd5c3249094757b39ba987dcfb5a/virtualenv-16.4.3-py2.py3-none-any.whl'
-HASH = '6aebaf4dd2568a0094225ebbca987859e369e3e5c22dc7d52e5406d504890417'
+VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/4f/ba/6f9315180501d5ac3e707f19fcb1764c26cc6a9a31af05778f7c2383eadb/virtualenv-16.5.0-py2.py3-none-any.whl'
+HASH = 'bfc98bb9b42a3029ee41b96dc00a34c2f254cbf7716bec824477b2c82741a5c4'
 
 
 # This locates python used in IDA Pro (routine from bdist_msi.py)

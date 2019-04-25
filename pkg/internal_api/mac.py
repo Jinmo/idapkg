@@ -11,10 +11,10 @@ def find_idausr_offset(ida_path):
     csDetails = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
     csDetails.detail = True
 
-    imagebase = ida.optional_header.imagebase
+    imagebase = ida.imagebase
 
     for sect in ida.sections:
-        if sect.name == '.text':
+        if sect.name.lower() == '__text':
             text = sect
             code = str(bytearray(text.content))
 
@@ -67,9 +67,9 @@ def find_idausr_offset(ida_path):
             cur = code.find(delim, cur + 1)
 
     func = like_yara('\x84\xc0', lambda insn: insn.address +
-                     insn.size + insn.operands[1].mem.disp == string)[1]
-    ret = like_yara('\xc3', lambda insn: insn.operands[0].reg ==
-                    capstone.x86_const.X86_REG_RAX, func, func + 0x10000)[0]
+                     insn.size + insn.operands[1].mem.disp == string)
+    ret = like_yara('\xe8', lambda insn: insn.operands[0].reg ==
+                    capstone.x86_const.X86_REG_RDI and insn.address != func[0].address, func[1], func[1] + 0x10000)[0]
 
     # lea rax, [rip + offset]
     offset = ret.address + ret.size + ret.operands[1].mem.disp

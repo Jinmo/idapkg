@@ -135,15 +135,17 @@ def invalidate_idausr():
         path = ida_lib_path(current_ea)
 
         try:
-            if current_os == 'win':
-                try:
-                    import pefile
-                    import capstone
-                except ImportError:
-                    logger.info('Installing dependencies for analyzing IDAUSR offsets...')
-                    system('pip install pefile capstone')
+            import lief
+        except ImportError:
+            logger.info('Installing dependencies for analyzing IDAUSR offsets...')
+            system('pip install lief')
 
+        try:
+            if current_os == 'win':
                 from .win import find_idausr_offset
+                offset = find_idausr_offset(path)
+            elif current_os == 'mac':
+                from .mac import find_idausr_offset
                 offset = find_idausr_offset(path)
             else:
                 pass
