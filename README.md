@@ -4,13 +4,13 @@
 
 ## How to install
 
-[Download repo](https://github.com/Jinmo/idapkg/archive/master.zip), and copy it to `<IDA installation dir>`/plugins directory. After restarting IDA, it'll automatically install dependencies and add commands.
+[Download repo](https://github.com/Jinmo/idapkg/archive/master.zip), and copy `idapkg.py`, `pkg` folder to `<IDA installation dir>/plugins` directory. After restarting IDA, it'll automatically install dependencies and add commands.
 
 Then you can access it via command palette (Ctrl+Shift+P on windows/mac/linux, or Command+Shift+P on mac) after restarting IDA again (due to bug, currently resolving it).
 
-## What is installed
+## What file is created
 
-`~(Your home directory)/idapkg` is created.
+`~(Your home directory)/idapkg` will be created.
 
 ```
 idapkg/
@@ -62,4 +62,4 @@ See [Writing a package (link)](https://idapkg.com/getting-started).
 
 ## TODO
 
-Currently finding way to reliably and generally [update `IDAUSR` variable](https://github.com/Jinmo/idapkg/blob/76dfc3c8050406f220cbcc03ea270846b925098a/pkg/package/internal_api.py#L120).
+Currently finding way to reliably and generally [update `IDAUSR` variable on all platforms](https://github.com/Jinmo/idapkg/blob/master/pkg/internal_api/win.py). Currently only supporting Windows.
