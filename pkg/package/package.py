@@ -2,8 +2,10 @@ import os
 import sys
 import json
 import glob
+import shutil
 import zipfile
 import urllib2
+import traceback
 import ida_loader
 from StringIO import StringIO
 
@@ -12,6 +14,7 @@ from ..downloader import download
 from ..logger import logger
 from ..env import ea as current_ea, os as current_os, version as current_ver
 from ..util import putenv, execute_in_main_thread
+from ..virtualenv_utils import FixInterpreter
 
 from .. import internal_api
 
@@ -121,13 +124,29 @@ class LocalPackage(Package):
     def remove(self):
         with open(os.path.join(self.path, '.removed'), 'wb'):
             pass
-
         idausr = os.environ.get('IDAUSR', '')
         if self.path in idausr:
             new = idausr_remove(idausr, self.path)
             putenv('IDAUSR', new)
 
             internal_api.invalidate_idausr()
+
+        if not LocalPackage._remove_package_dir(self.path):
+            logger.error("Package directory is in use and will be removed after restart.")
+
+        logger.info("Done!")
+
+
+    @staticmethod
+    def _remove_package_dir(path):
+        errors = []
+        def onerror(listdir, path, exc):
+            logger.error(str(exc))
+            errors.append(exc)
+        
+        shutil.rmtree(path, onerror=onerror)
+
+        return not errors
 
     def fetch(self, url):
         return open(url, 'rb').read()
@@ -141,15 +160,17 @@ class LocalPackage(Package):
             if not isinstance(t, list):
                 raise Exception(
                     '%r Corrupted package: installers key is not list')
-            for script in t:
-                logger.info('Executing installer path %r...' % script)
-                script = os.path.join(self.path, script)
-                execfile(script, {
-                    __file__: script
-                })
+            with FixInterpreter():
+                for script in t:
+                    logger.info('Executing installer path %r...' % script)
+                    script = os.path.join(self.path, script)
+                    execfile(script, {
+                        __file__: script
+                    })
             logger.info('Done!')
         except:
             # TODO: implement rollback if needed
+            traceback.print_exc()
             logger.info('Installer failed!')
             self.remove()
             raise
@@ -213,6 +234,7 @@ class LocalPackage(Package):
         # filter removed package
         removed = os.path.join(path, '.removed')
         if os.path.isfile(removed):
+            LocalPackage._remove_package_dir(path)
             return None
 
         info_json = os.path.join(path, 'info.json')

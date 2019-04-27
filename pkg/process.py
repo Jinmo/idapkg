@@ -1,11 +1,20 @@
-import subprocess
 import Queue
 import threading
 import time
 import sys
 
+from subprocess import Popen as _Popen, PIPE, STDOUT
+
 
 def Popen(*args, **kwargs):
+    if 'stdout' not in kwargs:
+        kwargs['stdout'] = PIPE
+        if 'stderr' not in kwargs:
+            kwargs['stderr'] = STDOUT
+
+    else:
+        return _Popen(*args, **kwargs)
+
     q = Queue.Queue()
     done = []
 
@@ -34,12 +43,7 @@ def Popen(*args, **kwargs):
                 break
             q.put(c)
 
-    if 'stdout' not in kwargs:
-        kwargs['stdout'] = subprocess.PIPE
-        if 'stderr' not in kwargs:
-            kwargs['stderr'] = subprocess.STDOUT
-
-    p = subprocess.Popen(*args, **kwargs)
+    p = _Popen(*args, **kwargs)
 
     t1 = threading.Thread(target=reader_thread)
     t2 = threading.Thread(target=receiver_thread)
@@ -47,8 +51,20 @@ def Popen(*args, **kwargs):
     t1.start()
     t2.start()
 
+    p.threads = t1, t2
+
     return p
 
 
 def system(cmd):
-    return Popen(cmd, shell=True).wait()
+    p = Popen(cmd, shell=True)
+    # trigger trace callback to prevent hang
+    t1, t2 = p.threads
+    TIMEOUT = 0.01
+    while t1.is_alive() and t2.is_alive():
+        t1.join(TIMEOUT)
+        t2.join(TIMEOUT)
+    return p.wait()
+
+if __name__ == '__main__':
+    print system('pip install requests')
