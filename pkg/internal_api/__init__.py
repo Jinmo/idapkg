@@ -117,7 +117,7 @@ __possible_to_invalidate = None
 def invalidate_idausr():
     global __possible_to_invalidate
 
-    if __possible_to_invalidate is not None:
+    if __possible_to_invalidate == False:
         return False
 
     already_found = g['idausr_native_bases'][current_ea == 64]
@@ -142,7 +142,7 @@ def invalidate_idausr():
             system('pip install lief capstone')
 
         try:
-            logging.info('Loading offsets from IDA binary...')
+            logger.info('Loading offsets from IDA binary... (takes a while)')
             if current_os == 'win':
                 from .win import find_idausr_offset
                 offset = find_idausr_offset(path)
@@ -161,7 +161,7 @@ def invalidate_idausr():
             __possible_to_invalidate = False
             return False
         else:
-            logging.info("Success!")
+            logger.info("Success!")
             __possible_to_invalidate = True
             g['idausr_native_bases'][current_ea == 64] = offset
             save_config(g)
