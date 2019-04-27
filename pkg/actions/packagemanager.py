@@ -1,7 +1,7 @@
 from __palette__ import Palette, show_palette, Action
 
 from pkg.package import LocalPackage
-from pkg.package.repo import get_online_packages
+from pkg.repo import get_online_packages
 from pkg.util import register_action
 
 

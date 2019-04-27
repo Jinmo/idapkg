@@ -1,3 +1,13 @@
+"""
+:os: operating system. 'win' | 'mac' | 'linux'
+:ea: current ea. 32 | 64
+:version: Decimal object for IDA Pro's version (ex. :code:`Decimal(6.95)`)
+:version_info:
+    namedtuple with version details
+    (ex. :code:`VersionPair(major=7, minor=0, micro=171130)`)
+
+"""
+
 import sys
 import re
 import collections
@@ -11,7 +21,6 @@ OS_MAP = {'win32': 'win', 'darwin': 'mac', 'linux2': 'linux'}
 ea = -1
 os = 'unknown'
 version = Decimal('0.0')
-version_info = None
 
 
 def __load_version_from_ida():
@@ -29,6 +38,7 @@ def __load_version_from_ida():
 
 
 version_info_cls = collections.namedtuple('VersionPair', 'major minor micro')
+version_info = version_info_cls(0, 0, 0)
 
 
 def __load_ida_native_version():
@@ -71,4 +81,6 @@ try:
     __load_ida_native_version()
 
 except ImportError:
-    assert __name__ == '__main__'
+    pass
+
+__all__ = ['os', 'ea', 'version', 'version_info']

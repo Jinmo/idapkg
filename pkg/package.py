@@ -1,3 +1,7 @@
+"""
+Package-related classes and methods are in pkg.package module. All constructing arguments are accessible via property.
+"""
+
 import os
 import sys
 import json
@@ -9,16 +13,17 @@ import traceback
 import ida_loader
 from StringIO import StringIO
 
-from ..config import g
-from ..downloader import download
-from ..logger import logger
-from ..env import ea as current_ea, os as current_os, version as current_ver
-from ..util import putenv, execute_in_main_thread
-from ..virtualenv_utils import FixInterpreter
+from .config import g
+from .downloader import download
+from .logger import logger
+from .env import ea as current_ea, os as current_os, version as current_ver
+from .util import putenv, execute_in_main_thread
+from .virtualenv_utils import FixInterpreter
 
-from .. import internal_api
+from . import internal_api
 
 ALL_EA = (32, 64)
+__all__ = ["LocalPackage", "InstallablePackage"]
 
 
 def get_native_suffix():
@@ -72,10 +77,9 @@ def idausr_remove(orig, target):
 
 
 class Package(object):
-    def __init__(self, name, path, version):
-        self.name = name
-        self.path = path
-        self.version = version
+    def __init__(self, id, version):
+        self.id = str(id)
+        self.version = str(version)
 
     def install(self):
         raise NotImplementedError
@@ -83,12 +87,8 @@ class Package(object):
     def remove(self):
         raise NotImplementedError
 
-    def fetch(self, url):
-        raise NotImplementedError
-
     def __repr__(self):
-        return '<%s name=%r path=%r version=%r>' % \
-            (self.__class__.__name__, self.name, self.path, self.version)
+        raise NotImplementedError
 
 
 # TODO: use some of check_* for matching dependency version
@@ -116,12 +116,15 @@ def select_entry(entry):
 
 
 class LocalPackage(Package):
-    def __init__(self, name, path, version):
-        super(LocalPackage, self).__init__(name, path, version)
+    def __init__(self, id, name, path, version):
+        super(LocalPackage, self).__init__(id, name, version)
 
         self.path = os.path.normpath(path)
 
     def remove(self):
+        """
+        Removes a package.
+        """
         with open(os.path.join(self.path, '.removed'), 'wb'):
             pass
         idausr = os.environ.get('IDAUSR', '')
@@ -132,30 +135,31 @@ class LocalPackage(Package):
             internal_api.invalidate_idausr()
 
         if not LocalPackage._remove_package_dir(self.path):
-            logger.error("Package directory is in use and will be removed after restart.")
+            logger.error(
+                "Package directory is in use and will be removed after restart.")
 
         logger.info("Done!")
-
 
     @staticmethod
     def _remove_package_dir(path):
         errors = []
+
         def onerror(listdir, path, exc):
             logger.error(str(exc))
             errors.append(exc)
-        
+
         shutil.rmtree(path, onerror=onerror)
 
         return not errors
 
-    def fetch(self, url):
-        return open(url, 'rb').read()
-
     def install(self):
+        """
+        Run python scripts specified by :code:`installers` field in `info.json`.
+        """
         orig_cwd = os.getcwd()
         try:
             os.chdir(self.path)
-            info = self.info()
+            info = self.metadata()
             t = info.get('installers', [])
             if not isinstance(t, list):
                 raise Exception(
@@ -177,8 +181,11 @@ class LocalPackage(Package):
         finally:
             os.chdir(orig_cwd)
 
-    def load(self):
-        if self.path in os.environ.get('IDAUSR', ''):
+    def load(self, force=False):
+        """
+        Actually does :code:`ida_loaders.load_plugin(paths)`, and updates IDAUSR variable.
+        """
+        if not force and self.path in os.environ.get('IDAUSR', ''):
             # Already loaded, just update sys.path for python imports
             sys.path.append(self.path)
             return
@@ -220,12 +227,18 @@ class LocalPackage(Package):
 
         execute_in_main_thread(handler)
 
-    def info(self):
+    def metadata(self):
+        """
+        Loads `info.json` and returns a parsed JSON object.
+        """
         with open(os.path.join(self.path, 'info.json'), 'rb') as f:
             return json.load(f)
 
     @staticmethod
     def by_name(name, prefix=None):
+        """
+        Returns a package with specified `name`.
+        """
         if prefix is None:
             prefix = g['path']['packages']
 
@@ -244,12 +257,15 @@ class LocalPackage(Package):
 
         with open(info_json, 'rb') as f:
             info = json.load(f)
-            result = LocalPackage(name=name if 'title' not in info or not info['title'].strip() else info['title'],
+            result = LocalPackage(id=info['_id'], name=name if 'title' not in info or not info['title'].strip() else info['title'],
                                   path=path, version=info['version'])
             return result
 
     @staticmethod
     def all():
+        """
+        List all packages installed at :code:`g['path']['packages']`.
+        """
         prefix = g['path']['packages']
 
         res = os.listdir(prefix)
@@ -258,24 +274,28 @@ class LocalPackage(Package):
         res = filter(lambda x: x, res)
         return res
 
+    def __repr__(self):
+        return '<LocalPackage id=%r path=%r version=%r>' % \
+            (self.id, self.path, self.version)
+
 
 class InstallablePackage(Package):
-    def __init__(self, name, path, version, repo):
-        super(InstallablePackage, self).__init__(name, path, version)
+    def __init__(self, id, name, version, repo):
+        super(InstallablePackage, self).__init__(id, name, path, version)
         self.repo = repo
 
     def install(self):
-        InstallablePackage.install_from_repo(self.repo, self.path)
-
-    def remove(self):
-        raise NotImplementedError
+        """
+        Just calls :code:`InstallablePackage.install_from_repo(self.repo, self.id)`.
+        """
+        InstallablePackage.install_from_repo(self.repo, self.id)
 
     @staticmethod
     def install_from_repo(repo, spec):
         """
         This method downloads a package satisfying spec.
-        The function waits until it downloads and installs all of plugins.
-        So I recommend you to run it as separate thread if possible.
+        The function waits until all of dependencies are installed.
+        I recommend you to run it as separate thread if possible.
         """
         url = repo + '/download?spec=' + urllib2.quote(spec)
         logger.info('Downloading %s...' % spec)
@@ -316,6 +336,10 @@ class InstallablePackage(Package):
         pkg.load()
 
         return pkg
+
+    def __repr__(self):
+        return '<InstallablePackage id=%r version=%r>' % \
+            (self.id, self.version)
 
 
 if __name__ == '__main__':
