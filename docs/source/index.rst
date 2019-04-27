@@ -6,9 +6,9 @@
 Welcome to idapkg's documentation!
 ==================================
 
-idapkg is a package manager for IDA Pro. Packages are made of plugins, processor, loader modules, and til/sig/ids files. They can be downloaded from public / private repos.
+idapkg is a package manager for IDA Pro utilizing `IDAUSR env <https://www.hex-rays.com/products/ida/support/idadoc/1375.shtml>`_.
 
-The package format is same as IDA loads the plugin, except info.json. See IDAUSR variable. See `IDAUSR variable <https://www.hex-rays.com/products/ida/support/idadoc/1375.shtml>`_.
+A Package is a collection of plugins, processor, loader modules, and til/sig/ids files. They can be downloaded from `public <https://idapkg.com>`_ / `private <https://github.com/Jinmo/idapkg-api>`_ repos. A package's directory structure is like below:
 
 .. code-block :: diff
 
@@ -28,13 +28,6 @@ The package format is same as IDA loads the plugin, except info.json. See IDAUSR
     Optional for package:
     +   README.md
 
-
-################
-Additional notes
-################
-
-`idapkg/packages` is added to `sys.path` at startup, so placing `__init__.py` enables importing your packages in IDAPython.
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -49,4 +42,3 @@ Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`

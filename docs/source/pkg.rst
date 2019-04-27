@@ -3,8 +3,6 @@ pkg module
 
 .. automodule:: pkg.commands
 	:members:
-	:undoc-members:
-	:show-inheritance:
 
 pkg.package: Package-related classes
 ########
@@ -19,14 +17,16 @@ pkg.repo: Repository information
 
 .. automodule:: pkg.repo
 	:members:
-	:undoc-members:
-	:show-inheritance:
+
+pkg.config: config.json as :code:`g` objects
+########
+
+.. automodule:: pkg.config
 
 pkg.env: IDA version, and EA
 ########
 
 .. automodule:: pkg.env
-	:members: os, ea, version, version_info, __load_version_from_ida, __load_ida_native_version
-	:undoc-members:
+	:members: os, ea, version, version_info
 	:show-inheritance:
 

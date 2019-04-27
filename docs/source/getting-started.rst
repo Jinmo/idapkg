@@ -1,6 +1,8 @@
 Getting Started: Writing your plugins
 ================
 
+The package format is same as IDA loads the plugin, except info.json.
+
 1. plugins/ : Plugins directory
 ################
 
@@ -133,3 +135,9 @@ Add website to package information page.
 .. code-block:: javascript
 
     "homepage": "https://your_site.com"
+
+Additional notes
+================
+
+`idapkg/packages` is added to `sys.path` at startup, so placing `__init__.py` enables importing your packages in IDAPython.
+

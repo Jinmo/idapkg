@@ -21,7 +21,7 @@ def export(f):
 def install(spec, repo):
     """
     Download and install a package from specified repository.
-    See <InstallablePackage.install_from_repo>.
+    See :meth:`InstallablePackage.install_from_repo`.
 
     :param spec: `name==version`, or just `name` only.
     :param repo: URL of the repository.

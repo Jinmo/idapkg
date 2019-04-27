@@ -294,8 +294,10 @@ class InstallablePackage(Package):
     def install_from_repo(repo, spec):
         """
         This method downloads a package satisfying spec.
-        The function waits until all of dependencies are installed.
-        I recommend you to run it as separate thread if possible.
+
+        .. note ::
+            The function waits until all of dependencies are installed.
+            Run it as separate thread if possible.
         """
         url = repo + '/download?spec=' + urllib2.quote(spec)
         logger.info('Downloading %s...' % spec)

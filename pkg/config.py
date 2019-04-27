@@ -1,3 +1,25 @@
+"""
+This module generates and manages config data. Initial config is like this:
+
+.. code:: python
+
+    __initial_config = {
+        'path': {
+            'virtualenv': idapkg_dir('python'),
+            'packages': idapkg_dir('packages')
+        },
+        'repos': [
+            'https://api.idapkg.com'
+        ],
+        'idausr_native_bases': [None, None]
+    }
+
+:g:
+    Config object extended from __initial_config.
+    Loaded from and saved to ~/idapkg/config.json.
+
+"""
+
 import os
 import sys
 import json
