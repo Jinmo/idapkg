@@ -136,11 +136,13 @@ def invalidate_idausr():
 
         try:
             import lief
+            import capstone
         except ImportError:
             logger.info('Installing dependencies for analyzing IDAUSR offsets...')
-            system('pip install lief')
+            system('pip install lief capstone')
 
         try:
+            logging.info('Loading offsets from IDA binary...')
             if current_os == 'win':
                 from .win import find_idausr_offset
                 offset = find_idausr_offset(path)
@@ -159,6 +161,7 @@ def invalidate_idausr():
             __possible_to_invalidate = False
             return False
         else:
+            logging.info("Success!")
             __possible_to_invalidate = True
             g['idausr_native_bases'][current_ea == 64] = offset
             save_config(g)

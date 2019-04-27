@@ -1,9 +1,11 @@
 import os
 import sys
+import subprocess
 
 from .config import g
 from .util import __work
 from .logger import logger
+from .process import Popen, system
 
 # extracted from https://pypi.org/simple/virtualenv/
 VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/4f/ba/6f9315180501d5ac3e707f19fcb1764c26cc6a9a31af05778f7c2383eadb/virtualenv-16.5.0-py2.py3-none-any.whl'
@@ -40,9 +42,13 @@ class FixInterpreter(object):
 
     def __enter__(self):
         self.backup, sys.executable = sys.executable, _locate_python()
+        self.backup_popen, subprocess.Popen = subprocess.Popen, Popen
+        self.backup_system, os.system = os.system, system
 
     def __exit__(self, type_, value, traceback):
         sys.executable = self.backup
+        subprocess.Popen = self.backup_popen
+        os.system = self.backup_system
 
 
 def _install_virtualenv(path):
@@ -63,7 +69,7 @@ def _install_virtualenv(path):
 
         with FixInterpreter():
             logger.info('Creating environment using virtualenv...')
-            virtualenv.create_environment(path)
+            virtualenv.create_environment(path, site_packages=True)
             logger.info('Done!')
 
 

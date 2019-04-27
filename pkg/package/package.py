@@ -4,6 +4,7 @@ import json
 import glob
 import zipfile
 import urllib2
+import traceback
 import ida_loader
 from StringIO import StringIO
 
@@ -12,6 +13,7 @@ from ..downloader import download
 from ..logger import logger
 from ..env import ea as current_ea, os as current_os, version as current_ver
 from ..util import putenv, execute_in_main_thread
+from ..virtualenv_utils import FixInterpreter
 
 from .. import internal_api
 
@@ -141,15 +143,17 @@ class LocalPackage(Package):
             if not isinstance(t, list):
                 raise Exception(
                     '%r Corrupted package: installers key is not list')
-            for script in t:
-                logger.info('Executing installer path %r...' % script)
-                script = os.path.join(self.path, script)
-                execfile(script, {
-                    __file__: script
-                })
+            with FixInterpreter():
+                for script in t:
+                    logger.info('Executing installer path %r...' % script)
+                    script = os.path.join(self.path, script)
+                    execfile(script, {
+                        __file__: script
+                    })
             logger.info('Done!')
         except:
             # TODO: implement rollback if needed
+            traceback.print_exc()
             logger.info('Installer failed!')
             self.remove()
             raise
