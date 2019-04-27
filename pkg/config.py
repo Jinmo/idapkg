@@ -85,3 +85,6 @@ except (IOError, ValueError):
     print 'Generating inital config at', CONFIG_PATH
     g = copy.deepcopy(__initial_config)
     save_config(__initial_config)
+
+# Step 2. add sys.path
+sys.path.append(g['path']['packages'])

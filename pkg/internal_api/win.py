@@ -34,7 +34,7 @@ def find_idausr_offset(ida_path):
                     break
                 visited[offset] = True
                 if insn.bytes[0] == 0x48 and insn.mnemonic == 'lea':
-                    details = next(csDetails.disasm(insn.bytes, insn.address))
+                    details = next(csDetails.disasm(str(bytearray(insn.bytes)), insn.address))
                     ops = details.operands
                     if ops[1].mem.base == capstone.x86_const.X86_REG_RIP:
                         if target(details):
