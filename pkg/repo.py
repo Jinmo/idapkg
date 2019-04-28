@@ -6,7 +6,6 @@ from .package import InstallablePackage, LocalPackage
 from .config import g
 from .downloader import download_multi
 
-
 TIMEOUT = 8
 
 
@@ -38,7 +37,7 @@ def get_online_packages(repos=None):
             logger.error('Error fetching repo: %r\n%s' %
                          (repo_url, io.getvalue()))
 
-    download_multi([x+endpoint for x in repos], collector, timeout=TIMEOUT)
+    download_multi([x + endpoint for x in repos], collector, timeout=TIMEOUT)
 
     result = []
     for generator in results:

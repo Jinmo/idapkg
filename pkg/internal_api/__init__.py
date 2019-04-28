@@ -6,7 +6,6 @@ import idaapi
 from ..env import ea as current_ea, os as current_os, version as current_ver, version_info
 from ..logger import logger
 from ..config import g, save_config
-
 from ..process import system
 
 IDADIR = os.path.dirname(os.path.dirname(idaapi.__file__))
@@ -21,6 +20,7 @@ def ida_lib_path(ea):
     if current_os == 'linux':
         path = os.path.join(IDADIR, "lib" + ea_name + ".so")
     return os.path.normpath(path)
+
 
 def ida_lib():
     ea_name = 'ida64' if current_ea == 64 else 'ida'
@@ -47,6 +47,7 @@ def get_lib_base(handle):
                 ('dli_sname', ctypes.c_char_p),
                 ('dli_saddr', ctypes.c_void_p)
             ]
+
         libc = ctypes.CDLL('/usr/lib/libSystem.B.dylib')
         info = Dl_info()
         if not libc.dladdr(ctypes.cast(handle.find_plugin, ctypes.c_void_p), ctypes.byref(info)):
@@ -154,7 +155,7 @@ def invalidate_idausr():
         except:
             traceback.print_exc()
             pass
-        
+
         if offset is None:
             logger.info(
                 "Loading processors/loaders are not supported in this platform.")

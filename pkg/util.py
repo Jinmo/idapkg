@@ -58,9 +58,20 @@ def putenv(key, value):
 class Worker(PyQt5.QtCore.QObject):
     work = PyQt5.QtCore.pyqtSignal()
 
+    def __init__(self):
+        super(Worker, self).__init__()
+        self.mutex = PyQt5.QtCore.QMutex()
+        self.cond = PyQt5.QtCore.QWaitCondition()
+        self.finished = False
+
 
 def execute_in_main_thread(func):
     signal_source = Worker()
     signal_source.moveToThread(PyQt5.QtWidgets.qApp.thread())
-    signal_source.work.connect(func)
+
+    signal_source.mutex.lock()
+    signal_source.work.connect(lambda: [func(), signal_source.mutex.unlock()])
     signal_source.work.emit()
+
+    signal_source.mutex.lock()
+    signal_source.mutex.unlock()

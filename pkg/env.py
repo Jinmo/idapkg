@@ -53,12 +53,12 @@ def __load_ida_native_version():
         with open(path, 'rb') as f:
             data = f.read()
             needle = 'F\0i\0l\0e\0V\0e\0r\0s\0i\0o\0n\0\0\0\0\0'
-            offset = data.rfind(needle)+len(needle)
-            offset2 = data.find('\0\0', offset)+1
+            offset = data.rfind(needle) + len(needle)
+            offset2 = data.find('\0\0', offset) + 1
             version = data[offset:offset2].decode('utf16').encode('utf8')
 
             version = version[:version.rfind(
-                '.')] + version[version.rfind('.')+1:]
+                '.')] + version[version.rfind('.') + 1:]
     elif os == 'mac':
         path = _os.path.join(sysdir, exe_name)
         with open(path, 'rb') as f:

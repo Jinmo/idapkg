@@ -116,8 +116,8 @@ def select_entry(entry):
 
 
 class LocalPackage(Package):
-    def __init__(self, id, name, path, version):
-        super(LocalPackage, self).__init__(id, name, version)
+    def __init__(self, id, path, version):
+        super(LocalPackage, self).__init__(id, version)
 
         self.path = os.path.normpath(path)
 
@@ -127,6 +127,7 @@ class LocalPackage(Package):
         """
         with open(os.path.join(self.path, '.removed'), 'wb'):
             pass
+
         idausr = os.environ.get('IDAUSR', '')
         if self.path in idausr:
             new = idausr_remove(idausr, self.path)
@@ -190,42 +191,47 @@ class LocalPackage(Package):
             sys.path.append(self.path)
             return
 
-        sys.path.append(self.path)
-
         env = str(_idausr_add(os.getenv('IDAUSR'), self.path))
 
         def handler():
             # Load plugins immediately
             # processors / loaders will be loaded on demand
-            def find_loadable_modules(path, callback):
-                for suffix in ['.' + x.fileext for x in internal_api.get_extlangs()]:
-                    expr = os.path.join(self.path, path, '*' + suffix)
-                    for path in glob.glob(expr):
-                        callback(str(path))
-
-                for suffix in (get_native_suffix(), ):
-                    expr = os.path.join(self.path, path, '*' + suffix)
-                    for path in glob.glob(expr):
-                        is64 = path[:-len(suffix)][-2:] == '64'
-
-                        if is64 == (current_ea == 64):
-                            callback(str(path))
+            sys.path.append(self.path)
 
             # Update IDAUSR variable
             internal_api.invalidate_idausr()
             putenv('IDAUSR', env)
 
             # Immediately load compatible plugins
-            find_loadable_modules('plugins', ida_loader.load_plugin)
+            self._find_loadable_modules('plugins', ida_loader.load_plugin)
 
             # Find loadable processor modules, and if exists, invalidate cached process list (proccache).
             invalidates = []
-            find_loadable_modules('procs', invalidates.append)
+            self._find_loadable_modules('procs', invalidates.append)
 
             if invalidates:
                 internal_api.invalidate_proccache()
 
         execute_in_main_thread(handler)
+
+    def populate_env(self):
+        # passive version of load
+        putenv('IDAUSR', str(_idausr_add(os.getenv("IDAUSR"), self.path)))
+        sys.path.append(self.path)
+
+    def _find_loadable_modules(self, path, callback):
+        for suffix in ['.' + x.fileext for x in internal_api.get_extlangs()]:
+            expr = os.path.join(self.path, path, '*' + suffix)
+            for path in glob.glob(expr):
+                callback(str(path))
+
+        for suffix in (get_native_suffix(),):
+            expr = os.path.join(self.path, path, '*' + suffix)
+            for path in glob.glob(expr):
+                is64 = path[:-len(suffix)][-2:] == '64'
+
+                if is64 == (current_ea == 64):
+                    callback(str(path))
 
     def metadata(self):
         """
@@ -257,8 +263,7 @@ class LocalPackage(Package):
 
         with open(info_json, 'rb') as f:
             info = json.load(f)
-            result = LocalPackage(id=info['_id'], name=name if 'title' not in info or not info['title'].strip() else info['title'],
-                                  path=path, version=info['version'])
+            result = LocalPackage(id=info['_id'], path=path, version=info['version'])
             return result
 
     @staticmethod
@@ -276,12 +281,12 @@ class LocalPackage(Package):
 
     def __repr__(self):
         return '<LocalPackage id=%r path=%r version=%r>' % \
-            (self.id, self.path, self.version)
+               (self.id, self.path, self.version)
 
 
 class InstallablePackage(Package):
     def __init__(self, id, name, version, repo):
-        super(InstallablePackage, self).__init__(id, name, path, version)
+        super(InstallablePackage, self).__init__(id, version)
         self.repo = repo
 
     def install(self):
@@ -310,11 +315,10 @@ class InstallablePackage(Package):
         with zipfile.ZipFile(io, 'r') as f:
             with f.open('info.json') as j:
                 info = json.load(j)
-                name = info['_id']
 
             install_path = os.path.join(
                 g['path']['packages'],
-                name
+                info["_id"]
             )
 
             f.extractall(install_path)
@@ -327,7 +331,7 @@ class InstallablePackage(Package):
             os.unlink(removed)
 
         # Initiate LocalPackage object
-        pkg = LocalPackage(name, install_path, info['version'])
+        pkg = LocalPackage(info['_id'], install_path, info['version'])
 
         # First, install dependencies. This is blocking job!
         # TODO: add version check, is this only for same repo?
@@ -341,7 +345,7 @@ class InstallablePackage(Package):
 
     def __repr__(self):
         return '<InstallablePackage id=%r version=%r>' % \
-            (self.id, self.version)
+               (self.id, self.version)
 
 
 if __name__ == '__main__':

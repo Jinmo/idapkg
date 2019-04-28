@@ -1,68 +1,62 @@
 import idaapi
+import pkg
 
-try:
-    # Load actions if ifred(palette module) is installed
-    import __palette__
-    from pkg.main import PackageManager
+RC = """
+def init_idapkg():
+    "idapythonrc.py is a perfect place to initialize IDAUSR variable"
+    import idaapi
 
-    def PLUGIN_ENTRY():
-        return PackageManager()
+    py_path = os.path.join(idaapi.get_user_idadir(), 'plugins')
+    sys.path.append(py_path)
 
-except ImportError:
-    def init_idapkg():
-        from pkg.package import LocalPackage
-        import pkg
+    from pkg.main import init_environment
+    init_environment()
 
-        _path = os.path.dirname(pkg.__file__)
-        _path = os.path.dirname(_path)
-        _path = os.path.join(_path, 'idapkg.py')
+init_idapkg()
+del init_idapkg
+"""
 
-        _needs_download = False
-        _deps = ['ifred']
-        for _dep in _deps:
-            _pkg = LocalPackage.by_name('ifred')
-            if _pkg:
-                _pkg.load()
-            else:
-                _needs_download = True
+SEP = '\n# idapkg version: ', '# idapkg end\n'
 
-        if _needs_download:
-            from pkg import install, config
-            from pkg.util import __work, execute_in_main_thread
-            from pkg.logger import logger
 
-            logger.info("Downloading initial dependencies...")
-            logger.info("IDA must be restarted after printing \"Done!\"")
+def update_pythonrc():
+    rcpath = os.path.join(idaapi.get_user_idadir(), "idapythonrc.py")
+    sep_with_ver = SEP[0] + pkg.__version__
+    payload = '%s\n%s\n%s' % (sep_with_ver, RC.strip(), SEP[1])
+    with open(rcpath, 'rb') as f:
+        py = f.read()
+        if payload in py:
+            return
 
-            _threads = [install(_dep, 'https://api.idapkg.com')
-                        for _dep in _deps]
+        if all(x in py for x in SEP):
+            py = py.split(SEP[0], 1)
+            py = py[0] + py[1].split(SEP[1], 1)[1]
+        py = payload + py
+        print('Added idapkg into idapythonrc.py...')
 
-            __work(lambda: ([t.join() for t in _threads],
-                            execute_in_main_thread(lambda: ida_loader.load_plugin(_path))))
+    with open(rcpath, 'wb') as f:
+        f.write(py)
 
-        else:
-            ida_loader.load_plugin(_path)
 
-    init_idapkg()
+class SkippingPlugin(idaapi.plugin_t):
+    flags = 0
+    comment = ""
+    help = ""
+    wanted_name = "skipping plugin"
+    wanted_hotkey = ""
 
-    class SkippingPlugin(idaapi.plugin_t):
-        flags = idaapi.PLUGIN_HIDE | idaapi.PLUGIN_FIX
-        comment = ""
-        help = ""
-        wanted_name = "skipping plugin"
-        wanted_hotkey = ""
+    def init(self):
+        return idaapi.PLUGIN_SKIP
 
-        def init(self):
-            return idaapi.PLUGIN_SKIP
+    def run(self):
+        pass
 
-        def run(self):
-            pass
+    def term(self):
+        pass
 
-        def term(self):
-            pass
 
-    def PLUGIN_ENTRY():
-        return SkippingPlugin()
+def PLUGIN_ENTRY():
+    return SkippingPlugin()
 
-finally:
-    pass
+
+update_pythonrc()

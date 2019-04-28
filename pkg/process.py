@@ -66,5 +66,6 @@ def system(cmd):
         t2.join(TIMEOUT)
     return p.wait()
 
+
 if __name__ == '__main__':
     print system('pip install requests')

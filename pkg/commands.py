@@ -8,7 +8,6 @@ import urllib2
 from .package import InstallablePackage, LocalPackage
 from .util import __work
 
-
 __all__ = []
 
 

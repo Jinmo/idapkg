@@ -3,7 +3,6 @@ import capstone
 
 
 def find_idausr_offset(ida_path):
-
     ida = lief.parse(ida_path)
 
     cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
@@ -30,7 +29,7 @@ def find_idausr_offset(ida_path):
                 break
 
             loop = False
-            for insn in (cs.disasm(code[offset:offset+15], addr + offset)):
+            for insn in (cs.disasm(code[offset:offset + 15], addr + offset)):
                 if visited[offset]:
                     break
                 visited[offset] = True
@@ -64,10 +63,11 @@ def find_idausr_offset(ida_path):
                     return res, cur - i
             cur = code.find(delim, cur + 1)
 
-    func = like_yara('\x48\x8d', lambda insn: insn.address +
-                     insn.size + insn.operands[1].mem.disp == string)
+    func = like_yara('\x48\x8d\x3d', lambda insn: insn.address +
+                                                  insn.size + insn.operands[1].mem.disp == string)
     ret = like_yara('\xe8', lambda insn: insn.operands[0].reg ==
-                    capstone.x86_const.X86_REG_RDI and insn.address != func[0].address, func[1], func[1] + 0x10000)[0]
+                                         capstone.x86_const.X86_REG_RDI and insn.address != func[0].address, func[1],
+                    func[1] + 0x10000)[0]
 
     # lea rax, [rip + offset]
     offset = ret.address + ret.size + ret.operands[1].mem.disp

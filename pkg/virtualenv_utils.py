@@ -73,12 +73,16 @@ def _install_virtualenv(path):
             logger.info('Done!')
 
 
-def prepare_virtualenv(path=None, callback=None):
+def prepare_virtualenv(path=None, callback=None, wait=False):
     if path is None:
         path = g['path']['virtualenv']
 
     abspath = os.path.abspath(path)
     sys.path.insert(0, abspath)
+
+    if not wait and callback:
+        callback = lambda: __work(callback)
+
     try:
         activator_path = os.path.join(abspath, 'Scripts' if sys.platform == 'win32' else 'bin', 'activate_this.py')
 
@@ -86,9 +90,10 @@ def prepare_virtualenv(path=None, callback=None):
             raise ImportError()
 
         execfile(activator_path, {'__file__': activator_path})
-        callback and __work(callback)
+        callback and callback()
     except ImportError:
         logger.info(
             'Will install virtualenv at %r since the module is not found...' % path)
-        __work(lambda: (_install_virtualenv(path),
-                        prepare_virtualenv(path), callback and callback()))
+        handler = lambda: (_install_virtualenv(path),
+                           prepare_virtualenv(path), callback and callback())
+        __work(handler) if not wait else handler()

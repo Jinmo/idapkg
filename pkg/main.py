@@ -1,29 +1,35 @@
-import idaapi
+import ida_loader
 
-from pkg.package import LocalPackage
 from pkg.virtualenv_utils import prepare_virtualenv
+from pkg.package import LocalPackage, InstallablePackage
+from pkg.logger import logger
 
-class PackageManager(idaapi.plugin_t):
-    flags = idaapi.PLUGIN_HIDE | idaapi.PLUGIN_FIX
-    comment = "Package Manager"
-    help = "Package Manager for IDA Pro"
-    wanted_name = "idapkg"
-    wanted_hotkey = ""
+from . import __version__
 
-    @staticmethod
-    def _load_all_plugins():
-        for package in LocalPackage.all():
-            package.load()
 
-        import pkg.actions
+def init_environment():
+    logger.info("idapkg version %s" % __version__)
+    prepare_virtualenv(wait=True)
 
-    def init(self):
-        prepare_virtualenv(callback=PackageManager._load_all_plugins)
-        return idaapi.PLUGIN_OK
+    _initial_deps = ['ifred']
 
-    def run(self, arg):
-        pass
+    if all(LocalPackage.by_name(_dep) for _dep in _initial_deps):
+        for _dep in _initial_deps:
+            LocalPackage.by_name(_dep) \
+                ._find_loadable_modules('plugins', ida_loader.load_plugin)
 
-    def term(self):
-        pass
+    else:
+        logger.info("Downloading initial dependencies...")
+        logger.info("IDA must be restarted after printing \"Done!\"")
 
+        for _dep in _initial_deps:
+            InstallablePackage \
+                .install_from_repo('https://api.idapkg.com', _dep)
+
+    import pkg.actions
+
+    for pkg in LocalPackage.all():
+        pkg.populate_env()
+
+    from pkg.internal_api import invalidate_idausr
+    invalidate_idausr()
