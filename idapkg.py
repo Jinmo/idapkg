@@ -23,16 +23,19 @@ def update_pythonrc():
     rcpath = os.path.join(idaapi.get_user_idadir(), "idapythonrc.py")
     sep_with_ver = SEP[0] + pkg.__version__
     payload = '%s\n%s\n%s' % (sep_with_ver, RC.strip(), SEP[1])
-    with open(rcpath, 'rb') as f:
-        py = f.read()
-        if payload in py:
-            return
+    if os.path.isfile(rcpath):
+        with open(rcpath, 'rb') as f:
+            py = f.read()
+            if payload in py:
+                return
 
-        if all(x in py for x in SEP):
-            py = py.split(SEP[0], 1)
-            py = py[0] + py[1].split(SEP[1], 1)[1]
-        py = payload + py
-        print('Added idapkg into idapythonrc.py...')
+            if all(x in py for x in SEP):
+                py = py.split(SEP[0], 1)
+                py = py[0] + py[1].split(SEP[1], 1)[1]
+            py = payload + py
+            print('Added idapkg into idapythonrc.py...')
+    else:
+        py = payload
 
     with open(rcpath, 'wb') as f:
         f.write(py)
