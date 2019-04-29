@@ -5,6 +5,7 @@ from StringIO import StringIO
 from .package import InstallablePackage, LocalPackage
 from .config import g
 from .downloader import download_multi
+from .logger import logger
 
 TIMEOUT = 8
 
