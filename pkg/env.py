@@ -8,11 +8,10 @@
 
 """
 
-import sys
-import re
 import collections
 import os as _os
-
+import re
+import sys
 from decimal import Decimal
 
 OS_MAP = {'win32': 'win', 'darwin': 'mac', 'linux2': 'linux'}
@@ -55,10 +54,9 @@ def __load_ida_native_version():
             needle = 'F\0i\0l\0e\0V\0e\0r\0s\0i\0o\0n\0\0\0\0\0'
             offset = data.rfind(needle) + len(needle)
             offset2 = data.find('\0\0', offset) + 1
-            version = data[offset:offset2].decode('utf16').encode('utf8')
+            version_str = data[offset:offset2].decode('utf16').encode('utf8')
 
-            version = version[:version.rfind(
-                '.')] + version[version.rfind('.') + 1:]
+            version_str = version_str[:version_str.rfind('.')] + version_str[version_str.rfind('.') + 1:]
     elif os == 'mac':
         path = _os.path.join(sysdir, exe_name)
         with open(path, 'rb') as f:
@@ -67,9 +65,9 @@ def __load_ida_native_version():
             offset = data.rfind(needle)
             offset = data.find('<string>', offset) + 8
             offset2 = data.find('</string', offset)
-            version = data[offset:offset2]
+            version_str = data[offset:offset2]
 
-    version_info = version_info_cls._make(map(int, version.split('.')))
+    version_info = version_info_cls._make(map(int, version_str.split('.')))
     return version_info
 
 
@@ -81,6 +79,7 @@ try:
     __load_ida_native_version()
 
 except ImportError:
+    idc, idaapi = None, None
     pass
 
 __all__ = ['os', 'ea', 'version', 'version_info']

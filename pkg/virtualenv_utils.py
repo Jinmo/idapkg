@@ -12,13 +12,7 @@ VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/4f/ba/6f9315180501d5ac
 HASH = 'bfc98bb9b42a3029ee41b96dc00a34c2f254cbf7716bec824477b2c82741a5c4'
 
 
-# This locates python used in IDA Pro (routine from bdist_msi.py)
 def _locate_python_win():
-    import _winreg as winreg
-
-    # Supporting 2.7 only
-    assert sys.version_info[:2] == (2, 7)
-
     return os.path.join(sys.exec_prefix, 'python.exe')
 
 

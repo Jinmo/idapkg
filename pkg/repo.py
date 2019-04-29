@@ -13,7 +13,7 @@ def get_online_packages(repos=None):
     """
     Generates a list of packages from specified repositories.
 
-    :param repos: Array of url strings pointing valid repos. Default: g['repos']
+    :param repos: Array of :class:`~pkg.package.InstallablePackage` pointing valid repos. Default: g['repos']
     """
     if repos is None:
         repos = g['repos']

@@ -2,9 +2,6 @@
 Some console-friendly methods are exposed in pkg.*, and defined at pkg.commands.
 """
 
-import threading
-import urllib2
-
 from .package import InstallablePackage, LocalPackage
 from .util import __work
 

@@ -58,7 +58,7 @@ def download_multi(urls, cb, timeout=None):
 def download(url):
     results = [None]
 
-    def set_res(res, url):
+    def set_res(res, _url):
         results[0] = res
 
     download_multi([url], set_res)

@@ -1,5 +1,6 @@
 import idaapi
 import pkg
+import os
 
 RC = """
 def init_idapkg():
