@@ -8,7 +8,7 @@ from pkg.util import register_action, __work
 @register_action('Packages: Install Package')
 def install_plugins():
     actions = get_online_packages()
-    actions = [(lambda _: Action(id=_.id, description=_.id, handler=lambda action: __work(_.install)))(item)
+    actions = [(lambda _: Action(id=_.id, description=_.name, handler=lambda action: __work(_.install)))(item)
                for item in actions]
     show_palette(Palette('install', "Enter package name to install...", actions))
 

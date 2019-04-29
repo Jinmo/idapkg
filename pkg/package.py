@@ -257,6 +257,7 @@ class LocalPackage(Package):
 class InstallablePackage(Package):
     def __init__(self, id, name, version, repo):
         super(InstallablePackage, self).__init__(id, version)
+        self.name = name
         self.repo = repo
 
     def install(self):

@@ -20,7 +20,7 @@ def get_online_packages(repos=None):
         repos = g['repos']
 
     results = []
-    endpoint = '/plugins'
+    endpoint = '/search'
 
     def collector(res, repo_url):
         repo_url = repo_url[:-len(endpoint)]
