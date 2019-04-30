@@ -1,5 +1,7 @@
-import ida_loader
 import os
+
+import ida_loader
+import idaapi
 
 from pkg.virtualenv_utils import prepare_virtualenv
 from pkg.package import LocalPackage, InstallablePackage
