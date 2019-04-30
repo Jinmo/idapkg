@@ -2,6 +2,7 @@ import Queue
 import sys
 import threading
 import time
+from PyQt5.QtCore import QCoreApplication
 from subprocess import Popen as _Popen, PIPE, STDOUT
 
 
@@ -72,6 +73,7 @@ def system(cmd):
     while t1.is_alive() and t2.is_alive():
         t1.join(timeout)
         t2.join(timeout)
+        QCoreApplication.processEvents()
     return p.wait()
 
 
