@@ -1,24 +1,31 @@
 import ctypes
 import os
 import traceback
+
 import idaapi
 
-from ..env import ea as current_ea, os as current_os, version as current_ver, version_info
-from ..logger import logger
 from ..config import g, save_config
+from ..env import ea as current_ea, os as current_os
+from ..logger import logger
 from ..process import system
 
 IDADIR = os.path.dirname(os.path.dirname(idaapi.__file__))
+
+
+def os_error():
+    return Exception("unknown os: %r" % current_os)
 
 
 def ida_lib_path(ea):
     ea_name = 'ida64' if ea == 64 else 'ida'
     if current_os == 'win':
         path = os.path.join(IDADIR, ea_name + ".dll")
-    if current_os == 'mac':
+    elif current_os == 'mac':
         path = os.path.join(IDADIR, "lib" + ea_name + ".dylib")
-    if current_os == 'linux':
+    elif current_os == 'linux':
         path = os.path.join(IDADIR, "lib" + ea_name + ".so")
+    else:
+        raise os_error()
     return os.path.normpath(path)
 
 
@@ -30,9 +37,11 @@ def ida_lib():
     elif current_os == 'mac':
         functype = ctypes.CFUNCTYPE
         lib = ctypes.CDLL(ida_lib_path(current_ea))
-    else:
+    elif current_os == 'linux':
         functype = ctypes.CFUNCTYPE
         lib = getattr(ctypes.cdll, 'lib' + ea_name)
+    else:
+        raise os_error()
     return functype, lib
 
 
@@ -118,7 +127,7 @@ __possible_to_invalidate = None
 def invalidate_idausr():
     global __possible_to_invalidate
 
-    if __possible_to_invalidate == False:
+    if __possible_to_invalidate is False:
         return False
 
     already_found = g['idausr_native_bases'][current_ea == 64]

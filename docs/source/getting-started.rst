@@ -105,7 +105,7 @@ idapkg creates and uses virtualenv at `~/idapkg/python.` pip for this env is ava
 - `env.version`: python Decimal object for IDA Pro's version (ex. `Decimal(6.95)`)
 - `env.version_info`: namedtuple with version details (ex. `VersionPair(major=7, minor=0, micro=171130)`)
 
-For `pkg.*` references, see [API docs](/not-yet).
+For `pkg.*` references, see `pkg module` section of `API docs <https://idapkg.rtfd.io>`_.
 
 dependencies: Dependencies between packages
 ****************

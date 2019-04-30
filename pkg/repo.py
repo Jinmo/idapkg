@@ -5,6 +5,7 @@ from StringIO import StringIO
 from .package import InstallablePackage, LocalPackage
 from .config import g
 from .downloader import download_multi
+from .logger import logger
 
 TIMEOUT = 8
 
@@ -13,13 +14,13 @@ def get_online_packages(repos=None):
     """
     Generates a list of packages from specified repositories.
 
-    :param repos: Array of url strings pointing valid repos. Default: g['repos']
+    :param repos: Array of :class:`~pkg.package.InstallablePackage` pointing valid repos. Default: g['repos']
     """
     if repos is None:
         repos = g['repos']
 
     results = []
-    endpoint = '/plugins'
+    endpoint = '/search'
 
     def collector(res, repo_url):
         repo_url = repo_url[:-len(endpoint)]

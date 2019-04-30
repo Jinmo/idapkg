@@ -24,6 +24,7 @@ idapkg/
 When a package is installed, `packages/<name>` is created and further added to `IDAUSR` variable. This enables following folders to be loaded by IDA Pro.
 
 ```
+<name>
   plugins/
   procs/
   loaders/

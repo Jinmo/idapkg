@@ -1,12 +1,14 @@
 import Queue
+import sys
 import threading
 import time
-import sys
-
 from subprocess import Popen as _Popen, PIPE, STDOUT
 
 
 def Popen(*args, **kwargs):
+    """
+    Wrapper around :meth:`python:subprocess.Popen`, except that if stdout is not given, it'll redirect stdout to messages window.
+    """
     if 'stdout' not in kwargs:
         kwargs['stdout'] = PIPE
         if 'stderr' not in kwargs:
@@ -57,13 +59,19 @@ def Popen(*args, **kwargs):
 
 
 def system(cmd):
+    """
+    Wrapper around :meth:`python:os.system`, except that output will be redirected to messages window.
+
+    :param cmd: Command to execute.
+    :return: exit status.
+    """
     p = Popen(cmd, shell=True)
     # trigger trace callback to prevent hang
     t1, t2 = p.threads
-    TIMEOUT = 0.01
+    timeout = 0.01
     while t1.is_alive() and t2.is_alive():
-        t1.join(TIMEOUT)
-        t2.join(TIMEOUT)
+        t1.join(timeout)
+        t2.join(timeout)
     return p.wait()
 
 

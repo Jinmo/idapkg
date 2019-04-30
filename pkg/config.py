@@ -104,7 +104,7 @@ try:
         save_config(g)
 except (IOError, ValueError):
     # save initial config
-    print 'Generating inital config at', CONFIG_PATH
+    print 'Generating initial config at', CONFIG_PATH
     g = copy.deepcopy(__initial_config)
     save_config(__initial_config)
 

@@ -16,7 +16,7 @@ from StringIO import StringIO
 from .config import g
 from .downloader import download
 from .logger import logger
-from .env import ea as current_ea, os as current_os, version as current_ver
+from .env import ea as current_ea, os as current_os
 from .util import putenv, execute_in_main_thread
 from .virtualenv_utils import FixInterpreter
 
@@ -33,6 +33,8 @@ def get_native_suffix():
         suffix = '.so'
     elif current_os == 'mac':
         suffix = '.dylib'
+    else:
+        raise Exception("unknown os: %r" % current_os)
     return suffix
 
 
@@ -43,13 +45,13 @@ def uniq(items):
 
 
 def _idausr_add_unix(orig, new):
-    if orig == None:
+    if orig is None:
         orig = os.path.join(os.getenv('HOME'), '.idapro')
     return ':'.join(uniq(orig.split(':') + [new]))
 
 
 def _idausr_add_win(orig, new):
-    if orig == None:
+    if orig is None:
         orig = os.path.join(os.getenv('APPDATA'), 'Hex-Rays', 'IDA Pro')
     return ';'.join(uniq(orig.split(';') + [new]))
 
@@ -81,38 +83,8 @@ class Package(object):
         self.id = str(id)
         self.version = str(version)
 
-    def install(self):
-        raise NotImplementedError
-
-    def remove(self):
-        raise NotImplementedError
-
     def __repr__(self):
         raise NotImplementedError
-
-
-# TODO: use some of check_* for matching dependency version
-def check_version(cur_version_str, expr):
-    pass
-
-
-def check_os(os_str, expr):
-    pass
-
-
-def select_entry(entry):
-    assert isinstance(entry, list), repr(entry)
-
-    for x in entry:
-        matches = {
-            'ea': current_ea in x.get('ea', ALL_EA),
-            'os': check_os(current_os, x.get('os', '*')),
-            'version': check_version(current_ver, x.get('ida_version', '*'))
-        }
-
-        logger.debug('Matching', matches, 'against', x)
-        if all(matches.values()):
-            return x['path']
 
 
 class LocalPackage(Package):
@@ -145,7 +117,7 @@ class LocalPackage(Package):
     def _remove_package_dir(path):
         errors = []
 
-        def onerror(listdir, path, exc):
+        def onerror(_listdir, _path, exc):
             logger.error(str(exc))
             errors.append(exc)
 
@@ -174,8 +146,6 @@ class LocalPackage(Package):
                     })
             logger.info('Done!')
         except:
-            # TODO: implement rollback if needed
-            traceback.print_exc()
             logger.info('Installer failed!')
             self.remove()
             raise
@@ -287,6 +257,7 @@ class LocalPackage(Package):
 class InstallablePackage(Package):
     def __init__(self, id, name, version, repo):
         super(InstallablePackage, self).__init__(id, version)
+        self.name = name
         self.repo = repo
 
     def install(self):
@@ -346,8 +317,3 @@ class InstallablePackage(Package):
     def __repr__(self):
         return '<InstallablePackage id=%r version=%r>' % \
                (self.id, self.version)
-
-
-if __name__ == '__main__':
-    # TODO: add tests that uses select_entry
-    pass
