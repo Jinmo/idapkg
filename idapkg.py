@@ -6,8 +6,8 @@ def init_idapkg():
     "idapythonrc.py is a perfect place to initialize IDAUSR variable"
     import idaapi
 
-    py_path = os.path.join(idaapi.get_user_idadir(), 'plugins')
-    sys.path.append(py_path)
+    sys.path.append(os.path.join(idaapi.idadir(), 'plugins'))
+    sys.path.append(os.path.join(idaapi.get_user_idadir(), 'plugins'))
 
     from pkg.main import init_environment
     init_environment()
@@ -33,9 +33,10 @@ def update_pythonrc():
                 py = py.split(SEP[0], 1)
                 py = py[0] + py[1].split(SEP[1], 1)[1]
             py = payload + py
-            print('Added idapkg into idapythonrc.py...')
+            print('Updating idapkg into idapythonrc.py.')
     else:
         py = payload
+        print('Added idapkg into idapythonrc.py. Will work after restarting!')
 
     with open(rcpath, 'wb') as f:
         f.write(py)
