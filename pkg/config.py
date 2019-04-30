@@ -30,7 +30,7 @@ try:
 except ImportError:
     raise Exception("You must run package manager in IDA Pro!")
 
-BASEDIR = os.path.expanduser('~/idapkg').replace('/', '/' if sys.platform != 'win32' else '\\')
+BASEDIR = os.path.expanduser(os.path.join('~', 'idapkg'))
 CONFIG_PATH = os.path.join(BASEDIR, 'config.json')
 
 

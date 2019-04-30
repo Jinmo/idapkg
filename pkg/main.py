@@ -13,13 +13,38 @@ from . import __version__
 RC = """
 def init_idapkg():
     "idapythonrc.py is a perfect place to initialize IDAUSR variable"
-    import idaapi
+    import os
+    import sys
+    import json
 
-    sys.path.append(os.path.join(idaapi.idadir('plugins')))
-    sys.path.append(os.path.join(idaapi.get_user_idadir(), 'plugins'))
+    def usage():
+        print "idapkg is not installed or corrupted."
+        print "please use the installation script below:"
+        print "https://github.com/Jinmo/idapkg"
 
-    from pkg.main import init_environment
-    init_environment()
+    basedir = os.path.expanduser(os.path.join('~', 'idapkg'))
+    config = os.path.join(basedir, 'config.json')
+
+    if os.path.isfile(config):
+        try:
+            with open(config, 'rb') as f:
+                j = json.load(f)
+
+            packages_path = j['path']['packages']
+            idapkg_path   = os.path.join(packages_path, 'idapkg')
+            assert os.path.isdir(idapkg_path), "idapkg package does not exist"
+            # idapkg doesn't have any plugins. just load to path.
+            # XXX: replace this with some package-related routines
+
+            sys.path.append(idapkg_path)
+            from pkg.main import init_environment
+            init_environment()
+        except:
+            import traceback
+            traceback.print_exc()
+            return usage()
+    else:
+        return usage()
 
 init_idapkg()
 del init_idapkg
@@ -51,13 +76,13 @@ def update_pythonrc():
         f.write(py)
 
 
-def init_environment():
+def init_environment(load=True):
     logger.info("idapkg version %s" % __version__)
     prepare_virtualenv(wait=True)
 
     _initial_deps = ['ifred']
 
-    if all(LocalPackage.by_name(_dep) for _dep in _initial_deps):
+    if all(LocalPackage.by_name(_dep) for _dep in _initial_deps) and load:
         for _dep in _initial_deps:
             LocalPackage.by_name(_dep) \
                 ._find_loadable_modules('plugins', ida_loader.load_plugin)
@@ -70,10 +95,13 @@ def init_environment():
             InstallablePackage \
                 .install_from_repo('https://api.idapkg.com', _dep)
 
-    import pkg.actions
+    if not load:
+        return
 
     for pkg in LocalPackage.all():
         pkg.populate_env()
+
+    import pkg.actions
 
     from pkg.internal_api import invalidate_idausr
     invalidate_idausr()
