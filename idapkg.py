@@ -1,5 +1,4 @@
 import idaapi
-import os
 from pkg.main import update_pythonrc
 
 class SkippingPlugin(idaapi.plugin_t):
