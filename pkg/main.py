@@ -82,7 +82,7 @@ def init_environment(load=True):
 
     _initial_deps = ['ifred']
 
-    if all(LocalPackage.by_name(_dep) for _dep in _initial_deps) and load:
+    if all(LocalPackage.by_name(_dep) for _dep in _initial_deps):
         for _dep in _initial_deps:
             LocalPackage.by_name(_dep) \
                 ._find_loadable_modules('plugins', ida_loader.load_plugin)
@@ -90,6 +90,7 @@ def init_environment(load=True):
     else:
         logger.info("Downloading initial dependencies...")
         logger.info("IDA must be restarted after printing \"Done!\"")
+        print LocalPackage.all()
 
         for _dep in _initial_deps:
             InstallablePackage \

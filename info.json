@@ -1,0 +1,9 @@
+{
+	"_id": "idapkg",
+	"version": "0.1.0",
+	"name": "idapkg",
+	"description": "idapkg Core package",
+	"dependencies": {
+		"ifred": "*"
+	}
+}
