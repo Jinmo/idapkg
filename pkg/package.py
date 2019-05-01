@@ -162,6 +162,9 @@ class LocalPackage(Package):
             return
 
         env = str(_idausr_add(os.getenv('IDAUSR'), self.path))
+        # XXX: find a more efficient way to ensure dependencies
+        for dependency in self.info().get('dependencies', {}).keys():
+            LocalPackage.by_name(dependency).load()
 
         def handler():
             # Load plugins immediately
@@ -186,6 +189,9 @@ class LocalPackage(Package):
 
     def populate_env(self):
         # passive version of load
+        for dependency in self.info().get('dependencies', {}).keys():
+            LocalPackage.by_name(dependency).populate_env()
+
         putenv('IDAUSR', str(_idausr_add(os.getenv("IDAUSR"), self.path)))
         sys.path.append(self.path)
 
