@@ -25,7 +25,7 @@ A Package is a collection of plugins, processor, loader modules, and til/sig/ids
     +   README.md
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    getting-started

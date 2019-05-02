@@ -1,10 +1,13 @@
 Getting Started: Writing your plugins
---------------------------------
+-------------------------------------
 
 The package format is same as IDA loads the plugin, except info.json.
 
+Package format
+<<<<<<<<<<<<<
+
 1. plugins/ : Plugins directory
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+================================
 
 
 ... and procs/ has processor modules, loaders/ has loader modules.
@@ -20,7 +23,7 @@ into til/ sig/ ids/.
 Please note that these directories are also in IDA Pro's installed folder.
 
 2. info.json (required)
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+================================
 
 You can bundle your IDA plugin with `info.json`, and `README.md` (if needed).
 
@@ -34,7 +37,7 @@ You can bundle your IDA plugin with `info.json`, and `README.md` (if needed).
     }
 
 3. README.md
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+================================
 
 .. code-block :: md
 
@@ -43,8 +46,8 @@ You can bundle your IDA plugin with `info.json`, and `README.md` (if needed).
 
     Awesome description here.
 
-Testing the package
---------------------------------
+Testing & Uploading
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 Place your package folder under `idapkg/packages`
 or `"path" > "packages"` entry on config.json,
@@ -54,7 +57,7 @@ or executing `pkg.refresh()`.
 Alternatively, you can execute :code:`pkg.local("package name or path")`.
 
 Debugging the installer
-<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+=======================
 
 Installer scripts are executed first time, and should raise exception if fails.
 
@@ -62,9 +65,6 @@ Installer scripts are executed first time, and should raise exception if fails.
 
     p = pkg.local("name or path")
     p.install()
-
-Uploading the package
---------------------------------
 
 `Finally, you can zip and upload your package at /upload <https://idapkg.com/upload>`_. The package can be managed via the repo.
 
@@ -153,6 +153,7 @@ Add website to package information page.
 Additional notes
 --------------------------------
 
-`idapkg/packages` is added to `sys.path` at startup,
-so placing `__init__.py` enables importing your packages in IDAPython.
+`idapkg/packages/<package name>` is added to :py:data:`sys.path` at startup,
+so placing python modules inside the package root enables importing
+your packages in IDAPython.
 
