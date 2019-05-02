@@ -189,7 +189,7 @@ class LocalPackage(Package):
 
     def populate_env(self):
         # passive version of load
-        for dependency in self.info().get('dependencies', {}).keys():
+        for dependency in self.metadata().get('dependencies', {}).keys():
             LocalPackage.by_name(dependency).populate_env()
 
         putenv('IDAUSR', str(_idausr_add(os.getenv("IDAUSR"), self.path)))
