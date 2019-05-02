@@ -7,6 +7,7 @@ from pkg.virtualenv_utils import prepare_virtualenv
 from pkg.package import LocalPackage, InstallablePackage
 from pkg.logger import logger
 from pkg.util import putenv
+from pkg.repo import Repository
 
 from . import __version__
 
