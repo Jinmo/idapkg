@@ -127,25 +127,31 @@ class Hooks(idaapi.UI_Hooks):
         'NewInstance'
     ]
 
+    def __init__(self, *args, **kwargs):
+        super(Hooks, self).__init__(*args, **kwargs)
+        self._setter = IdausrTemporarySetter()
+
     def preprocess_action(self, action_name):
+        self._setter.push()
         if action_name in Hooks.needs_cleaning:
             # clear IDAUSR enviroment temporarily
-            setter.clear()
+            self._setter.clear()
 
-    def postprocess_action(self, action_name):
-        if action_name in Hooks.needs_cleaning:
-            # recover IDAUSR environment from backup
-            setter.recover()
+    def postprocess_action(self):
+        # recover IDAUSR environment from backup
+        self._setter.pop()
 
 
 class IdausrTemporarySetter():
     def __init__(self):
         self.original, self.backup = _original_idausr, None
 
-    def clear():
+    def push(self):
         self.backup = os.getenv('IDAUSR', '')
+
+    def clear(self):
         putenv('IDAUSR', self.original)
 
-    def recover():
+    def pop(self):
         putenv('IDAUSR', self.backup)
         self.backup = None
