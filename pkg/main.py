@@ -10,11 +10,6 @@ from pkg.util import putenv
 
 from . import __version__
 
-
-_original_idausr = None
-_setter = None
-_hooks = None
-
 RC = """
 def init_idapkg():
     "idapythonrc.py is a perfect place to initialize IDAUSR variable"
@@ -85,8 +80,6 @@ def init_environment(load=True):
     """
     Must be called from idapythonrc.py. I didn't test other cases.
     """
-    global _original_idausr, _hooks
-
     logger.info("idapkg version %s" % __version__)
     prepare_virtualenv(wait=True)
 
@@ -114,44 +107,9 @@ def init_environment(load=True):
         pkg.populate_env()
 
     import pkg.actions
+    import pkg.hooks
+
+    pkg.hooks.init_hooks(_original_idausr)
 
     from pkg.internal_api import invalidate_idausr
     invalidate_idausr()
-
-    _hooks = Hooks()
-    _hooks.hook()
-
-
-class Hooks(idaapi.UI_Hooks):
-    needs_cleaning = [
-        'NewInstance'
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(Hooks, self).__init__(*args, **kwargs)
-        self._setter = IdausrTemporarySetter()
-
-    def preprocess_action(self, action_name):
-        self._setter.push()
-        if action_name in Hooks.needs_cleaning:
-            # clear IDAUSR enviroment temporarily
-            self._setter.clear()
-
-    def postprocess_action(self):
-        # recover IDAUSR environment from backup
-        self._setter.pop()
-
-
-class IdausrTemporarySetter():
-    def __init__(self):
-        self.original, self.backup = _original_idausr, None
-
-    def push(self):
-        self.backup = os.getenv('IDAUSR', '')
-
-    def clear(self):
-        putenv('IDAUSR', self.original)
-
-    def pop(self):
-        putenv('IDAUSR', self.backup)
-        self.backup = None
