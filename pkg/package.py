@@ -269,7 +269,7 @@ class InstallablePackage(Package):
 
     def install(self, upgrade=False):
         """
-        Just calls :code:`InstallablePackage.install_from_repo(self.repo, self.id)`.
+        Just calls :code:`InstallablePackage.install_from_repo(self.repo, self.id, upgrade)`.
         """
         InstallablePackage.install_from_repo(self.repo, self.id, upgrade)
 

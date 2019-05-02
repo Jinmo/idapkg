@@ -24,7 +24,7 @@ class Repository(object):
         """
         Fetch metadata for single package from the repo.
 
-        :returns: None if package is not found, else a :class:`InstallablePackage` object
+        :returns: None if package is not found, else a :class:`~pkg.package.InstallablePackage` object
         """
         endpoint = '/info'
         res = download(self.url + endpoint + '?id=' +
@@ -44,7 +44,7 @@ class Repository(object):
         """
         Fetch a list of all packages in the repo.
 
-        :returns: Array of :class:`InstallablePackage` instances
+        :returns: Array of :class:`~pkg.package.InstallablePackage` instances
         """
         endpoint = '/search'
         res = download(self.url + endpoint, self.timeout)

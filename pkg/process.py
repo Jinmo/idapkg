@@ -8,7 +8,7 @@ from subprocess import Popen as _Popen, PIPE, STDOUT
 
 def Popen(*args, **kwargs):
     """
-    Wrapper around :meth:`python:subprocess.Popen`, except that if stdout is not given, it'll redirect stdout to messages window.
+    Wrapper around :py:meth:`subprocess.Popen`, except that if stdout is not given, it'll redirect stdout to messages window.
     """
     if 'stdout' not in kwargs:
         kwargs['stdout'] = PIPE
@@ -61,7 +61,7 @@ def Popen(*args, **kwargs):
 
 def system(cmd):
     """
-    Wrapper around :meth:`python:os.system`, except that output will be redirected to messages window.
+    Wrapper around :py:meth:`os.system`, except that output will be redirected to messages window.
 
     :param cmd: Command to execute.
     :return: exit status.
