@@ -2,36 +2,36 @@ pkg module
 ===========
 
 .. automodule:: pkg.commands
-	:members:
+    :members:
 
 pkg.package: Package-related classes
-###########
+############################################
 
 .. automodule:: pkg.package
-	:members:
-	:undoc-members:
-	:show-inheritance:
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 pkg.repo: Repository information
-###########
+############################################
 
 .. automodule:: pkg.repo
-	:members:
+    :members:
 
 pkg.config: config.json as :code:`g` objects
-###########
+############################################
 
 .. automodule:: pkg.config
 
 pkg.env: IDA version, and EA
-###########
+############################################
 
 .. automodule:: pkg.env
-	:members: os, ea, version, version_info
-	:show-inheritance:
+    :members: os, ea, version, version_info
+    :show-inheritance:
 
 pkg.process: process launchers with output redirected
-###########
+#####################################################
 
 .. automodule:: pkg.process
     :members: Popen, system

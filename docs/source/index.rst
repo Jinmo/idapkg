@@ -1,12 +1,8 @@
-.. idapkg documentation master file, created by
-   sphinx-quickstart on Sun Apr 28 01:52:16 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to idapkg's documentation!
 ==================================
 
-idapkg is a package manager for IDA Pro utilizing `IDAUSR env <https://www.hex-rays.com/products/ida/support/idadoc/1375.shtml>`_.
+idapkg is a package manager for IDA Pro utilizing
+`IDAUSR env <https://www.hex-rays.com/products/ida/support/idadoc/1375.shtml>`_.
 
 A Package is a collection of plugins, processor, loader modules, and til/sig/ids files. They can be downloaded from `public <https://idapkg.com>`_ / `private <https://github.com/Jinmo/idapkg-api>`_ repos. A package's directory structure is like below:
 

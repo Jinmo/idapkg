@@ -1,22 +1,26 @@
 Getting Started: Writing your plugins
-================
+--------------------------------
 
 The package format is same as IDA loads the plugin, except info.json.
 
 1. plugins/ : Plugins directory
-################
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-... and procs/ has processor modules, loaders/ has loader modules. Extension is important:
+
+... and procs/ has processor modules, loaders/ has loader modules.
+Extension is important:
 
 - .py: idapython
 - .dll/dylib/so: native plugins
   - 64.dll/64.dylib/64.so: native plugins for EA64
 - .idc: idc
 
-Type libraries, FLIRT signatures, and known function types can be bundled into til/ sig/ ids/. Please note that these directories are also in IDA Pro's installed folder.
+Type libraries, FLIRT signatures, and known function types can be bundled
+into til/ sig/ ids/.
+Please note that these directories are also in IDA Pro's installed folder.
 
 2. info.json (required)
-################
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 You can bundle your IDA plugin with `info.json`, and `README.md` (if needed).
 
@@ -30,7 +34,7 @@ You can bundle your IDA plugin with `info.json`, and `README.md` (if needed).
     }
 
 3. README.md
-################
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 .. code-block :: md
 
@@ -40,14 +44,17 @@ You can bundle your IDA plugin with `info.json`, and `README.md` (if needed).
     Awesome description here.
 
 Testing the package
-================
+--------------------------------
 
-Place your package folder under `idapkg/packages` or `"path" > "packages"` entry on config.json, then the package will be loaded after restarting IDA or executing `pkg.refresh()`.
+Place your package folder under `idapkg/packages`
+or `"path" > "packages"` entry on config.json,
+then the package will be loaded after restarting IDA
+or executing `pkg.refresh()`.
 
-Alternatively, you can execute :code:`pkg.local("package name or path").load()`.
+Alternatively, you can execute :code:`pkg.local("package name or path")`.
 
 Debugging the installer
-################
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 Installer scripts are executed first time, and should raise exception if fails.
 
@@ -57,17 +64,17 @@ Installer scripts are executed first time, and should raise exception if fails.
     p.install()
 
 Uploading the package
-================
+--------------------------------
 
 `Finally, you can zip and upload your package at /upload <https://idapkg.com/upload>`_. The package can be managed via the repo.
 
 Optional fields on :code:`info.json`
-================
+-------------------------------------
 
 \_id (actual path), name, version, description are needed.
 
 installers: Installation scripts
-****************
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 .. code-block:: javascript
 
@@ -77,15 +84,17 @@ installers: Installation scripts
 
 They must be python scripts. The entries are executed in order.
 
-Before execution, `os.chdir(package_root)` is done. `__file__` is also provided.
+Before execution, `os.chdir(package_root)` is done.
+`__file__` is also provided.
 Raise exception to abort installation, and the files will be removed.
 
 For installing pip packages, see below.
 
 Example: Python dependencies
-################
+================================
 
-idapkg creates and uses virtualenv at `~/idapkg/python.` pip for this env is available.
+idapkg creates and uses virtualenv at `~/idapkg/python.`
+pip for this env is also available.
 
 .. code-block:: python
 
@@ -102,15 +111,18 @@ idapkg creates and uses virtualenv at `~/idapkg/python.` pip for this env is ava
 
 - `env.os`: operating system, one of ('win', 'mac', 'linux')
 - `env.ea`: current ea, one of (32, 64)
-- `env.version`: python Decimal object for IDA Pro's version (ex. `Decimal(6.95)`)
-- `env.version_info`: namedtuple with version details (ex. `VersionPair(major=7, minor=0, micro=171130)`)
+- `env.version`: python Decimal object for IDA Pro's version
+  (ex. `Decimal(6.95)`)
+- `env.version_info`: namedtuple with version details
+  (ex. `VersionPair(major=7, minor=0, micro=171130)`)
 
 For `pkg.*` references, see `pkg module` section of `API docs <https://idapkg.rtfd.io>`_.
 
 dependencies: Dependencies between packages
-****************
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-A package can have dependency list. The loading order is also sorted regarding to dependencies.
+A package can have dependency list.
+The loading order is also sorted regarding to dependencies.
 
 .. code-block:: javascript
 
@@ -119,16 +131,18 @@ A package can have dependency list. The loading order is also sorted regarding t
     }
 
 keywords: Package keywords
-****************
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-Array of words that represents your package. Note that `procs`, `plugins`, and some words are automatically added depending on the content.
+Array of words that represents your package.
+Note that `procs`, `plugins`, and some words are
+automatically added depending on the content.
 
 .. code-block:: javascript
 
     "keywords": ["theme"]
 
 homepage: Your project homepage
-****************
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 Add website to package information page.
 
@@ -137,7 +151,8 @@ Add website to package information page.
     "homepage": "https://your_site.com"
 
 Additional notes
-================
+--------------------------------
 
-`idapkg/packages` is added to `sys.path` at startup, so placing `__init__.py` enables importing your packages in IDAPython.
+`idapkg/packages` is added to `sys.path` at startup,
+so placing `__init__.py` enables importing your packages in IDAPython.
 

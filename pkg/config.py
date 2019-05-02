@@ -28,7 +28,7 @@ import copy
 try:
     import idaapi
 except ImportError:
-    raise Exception("You must run package manager in IDA Pro!")
+    print("You're running package manager not in IDA Pro. Some functionalities will be limited.")
 
 BASEDIR = os.path.expanduser(os.path.join('~', 'idapkg'))
 CONFIG_PATH = os.path.join(BASEDIR, 'config.json')
