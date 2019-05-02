@@ -17,6 +17,7 @@ This module generates and manages config data. Initial config is like this:
 :g:
     Config object extended from __initial_config.
     Loaded from and saved to ~/idapkg/config.json.
+    :code:`g['path']['packages'] == idapkg_dir('python')` initially.
 
 """
 

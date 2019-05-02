@@ -239,7 +239,8 @@ class LocalPackage(Package):
 
         with open(info_json, 'rb') as f:
             info = json.load(f)
-            result = LocalPackage(id=info['_id'], path=path, version=info['version'])
+            result = LocalPackage(
+                id=info['_id'], path=path, version=info['version'])
             return result
 
     @staticmethod
@@ -266,14 +267,14 @@ class InstallablePackage(Package):
         self.name = name
         self.repo = repo
 
-    def install(self):
+    def install(self, upgrade=False):
         """
         Just calls :code:`InstallablePackage.install_from_repo(self.repo, self.id)`.
         """
-        InstallablePackage.install_from_repo(self.repo, self.id)
+        InstallablePackage.install_from_repo(self.repo, self.id, upgrade)
 
     @staticmethod
-    def install_from_repo(repo, spec):
+    def install_from_repo(repo, spec, upgrade=False, _visited=None):
         """
         This method downloads a package satisfying spec.
 
@@ -281,45 +282,58 @@ class InstallablePackage(Package):
             The function waits until all of dependencies are installed.
             Run it as separate thread if possible.
         """
-        url = repo + '/download?spec=' + urllib2.quote(spec)
+
+        if _visited is None:
+            _visited = set()
+
+        if spec in _visited:
+            logger.warn("Cyclic dependency found when installing %r <-> %r" %
+                        (spec, _visited))
+            return
+
+        _visited.add(spec)
+
         logger.info('Downloading %s...' % spec)
-        data = download(url).read()
+        data = download(repo.url + '/download?spec=' + urllib2.quote(spec)).read()
         io = StringIO(data)
 
-        logger.info('Validating %s...' % spec)
-        info = None
+        f = zipfile.ZipFile(io, 'r')
+        info = json.load(f.open('info.json'))
 
-        with zipfile.ZipFile(io, 'r') as f:
-            with f.open('info.json') as j:
-                info = json.load(j)
+        prev = LocalPackage.by_name(info['_id'])
+        already_installed = prev and (
+            not upgrade or prev.version == info['version'])
 
-            install_path = os.path.join(
-                g['path']['packages'],
-                info["_id"]
-            )
+        if not already_installed:
+            install_path = os.path.join(g['path']['packages'], info["_id"])
 
-            f.extractall(install_path)
+            removed = os.path.join(install_path, '.removed')
+            if os.path.isfile(removed):
+                os.unlink(removed)
 
             logger.info('Extracting into %r...' % install_path)
-            assert os.path.isfile(os.path.join(install_path, 'info.json'))
+            f.extractall(install_path)
 
-        removed = os.path.join(install_path, '.removed')
-        if os.path.isfile(removed):
-            os.unlink(removed)
+            # Initiate LocalPackage object
+            pkg = LocalPackage(info['_id'], install_path, info['version'])
+        else:
+            pkg = prev
 
-        # Initiate LocalPackage object
-        pkg = LocalPackage(info['_id'], install_path, info['version'])
+            logger.info("Requirement already satisfied: %s %s" %
+                        (info['_id'], info['version']))
 
-        # First, install dependencies. This is blocking job!
-        # TODO: add version check, is this only for same repo?
+        # First, install dependencies
+        # TODO: add version check
         for dep_name, dep_spec in info.get('dependencies', {}).items():
-            InstallablePackage.install_from_repo(repo, dep_name)
+            InstallablePackage.install_from_repo(repo, dep_name, upgrade, _visited)
 
-        pkg.install()
+        if not already_installed:
+            pkg.install()
+
         pkg.load()
 
         return pkg
 
     def __repr__(self):
-        return '<InstallablePackage id=%r version=%r>' % \
-               (self.id, self.version)
+        return '<InstallablePackage id=%r version=%r repo=%r>' % \
+               (self.id, self.version, self.repo)

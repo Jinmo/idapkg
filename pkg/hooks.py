@@ -50,8 +50,6 @@ def init_hooks(idausr):
             _setter.push()
             try:
                 self.handler()
-            except:
-                raise
             finally:
                 _setter.pop()
 

@@ -98,7 +98,7 @@ def init_environment(load=True):
 
         for _dep in _initial_deps:
             InstallablePackage \
-                .install_from_repo('https://api.idapkg.com', _dep)
+                .install_from_repo(Repository('https://api.idapkg.com'), _dep)
 
     if not load:
         return

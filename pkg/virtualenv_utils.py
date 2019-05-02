@@ -82,12 +82,22 @@ def prepare_virtualenv(path=None, callback=None, wait=False):
 
         if not os.path.isfile(activator_path):
             raise ImportError()
-
+        
         execfile(activator_path, {'__file__': activator_path})
         callback and callback()
     except ImportError:
-        logger.info(
-            'Will install virtualenv at %r since the module is not found...' % path)
-        handler = lambda: (_install_virtualenv(path),
-                           prepare_virtualenv(path), callback and callback())
+        tasks = [
+            lambda: prepare_virtualenv(path)
+        ]
+
+        try:
+            import pip
+            if not os.path.abspath(pip.__file__).startswith(abspath):
+                raise ImportError()
+        except ImportError:
+            logger.info(
+                'Will install virtualenv at %r since pip module is not found...' % path)
+            tasks.insert(0, lambda: _install_virtualenv(path))
+
+        handler = lambda: ([task() for task in tasks], callback and callback())
         __work(handler) if not wait else handler()

@@ -148,7 +148,8 @@ def invalidate_idausr():
             import lief
             import capstone
         except ImportError:
-            logger.info('Installing dependencies for analyzing IDAUSR offsets...')
+            logger.info(
+                'Installing dependencies for analyzing IDAUSR offsets...')
             system('pip install lief capstone')
 
         try:

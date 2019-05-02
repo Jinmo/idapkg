@@ -14,13 +14,14 @@ def export(f):
 
 
 @export
-def install(spec, repo):
+def install(spec, repo, upgrade=False):
     """
     Download and install a package from specified repository.
     See :meth:`InstallablePackage.install_from_repo`.
 
     :param spec: `name==version`, or just `name` only.
     :param repo: URL of the repository.
+    :param upgrade: Upgrade when already installed if True.
     """
     return __work(lambda: InstallablePackage.install_from_repo(repo, spec))
 
@@ -54,3 +55,4 @@ def refresh():
     for pkg in LocalPackage.all():
         pkg.load()
     return True
+
