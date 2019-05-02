@@ -34,13 +34,13 @@ def upgrade_plugins():
 
 
 def install(name):
-    logger.info("Upgrading package %r ..." % name)
+    logger.info("Upgrading package %s..." % name)
     repos = Repository.from_urls()
     res = None
     for repo in repos:
         res = repo.single(name)
         if res:
-            res.upgrade()
+            res.install(upgrade=True)
             return
 
     logger.info(

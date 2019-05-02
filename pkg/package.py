@@ -285,6 +285,9 @@ class InstallablePackage(Package):
 
         if _visited is None:
             _visited = set()
+            top_level = True
+        else:
+            top_level = False
 
         if spec in _visited:
             logger.warn("Cyclic dependency found when installing %r <-> %r" %
@@ -293,7 +296,6 @@ class InstallablePackage(Package):
 
         _visited.add(spec)
 
-        logger.info('Downloading %s...' % spec)
         data = download(repo.url + '/download?spec=' + urllib2.quote(spec)).read()
         io = StringIO(data)
 
@@ -331,6 +333,8 @@ class InstallablePackage(Package):
             pkg.install()
 
         pkg.load()
+        if top_level:
+            logger.info("Done!")
 
         return pkg
 
