@@ -163,7 +163,7 @@ class LocalPackage(Package):
 
         env = str(_idausr_add(os.getenv('IDAUSR'), self.path))
         # XXX: find a more efficient way to ensure dependencies
-        for dependency in self.info().get('dependencies', {}).keys():
+        for dependency in self.metadata().get('dependencies', {}).keys():
             LocalPackage.by_name(dependency).load()
 
         def handler():
@@ -211,7 +211,7 @@ class LocalPackage(Package):
 
     def metadata(self):
         """
-        Loads `info.json` and returns a parsed JSON object.
+        Loads :code:`info.json` and returns a parsed JSON object.
         """
         with open(os.path.join(self.path, 'info.json'), 'rb') as f:
             return json.load(f)
