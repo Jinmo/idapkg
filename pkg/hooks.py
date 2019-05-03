@@ -1,44 +1,44 @@
-import idaapi
-import PyQt5.QtCore
 import os
+import idaapi
 import pkg.util
 
+from PyQt5.QtCore import QCoreApplication, QProcess
 
-_setter = None
-_hooks = []
+_HOOKS = []
 
 
 class IdausrTemporarySetter(object):
     def __init__(self, original):
         self.original, self.backups = original, []
 
-    def push(self):
+    def __enter__(self):
         self.backups.append(os.getenv('IDAUSR', ''))
         pkg.util.putenv('IDAUSR', self.original)
 
-    def pop(self):
+    def __exit__(self, *_):
         pkg.util.putenv('IDAUSR', self.backups.pop())
 
 
 def hook(name, label, before=None):
-    def decorator(f):
-        _hooks.append((name, label, f, before))
-        return f
-    return decorator
+    def _decorator(func):
+        _HOOKS.append((name, label, func, before))
+        return func
+    return _decorator
 
 
 @hook('NewInstance', '~N~ew instance', before='File/Open')
-def newInstance():
-    path = PyQt5.QtCore.QCoreApplication.applicationFilePath()
+def new_instance():
+    """
+    Simulates "New instance" action
+    """
+    path = QCoreApplication.applicationFilePath()
     if ' ' in path:
         path = '"' + path + '"'
 
-    PyQt5.QtCore.QProcess.startDetached(path)
+    QProcess.startDetached(path)
 
 
 def init_hooks(idausr):
-    global _setter
-
     _setter = IdausrTemporarySetter(idausr)
 
     class ActionHandler(idaapi.action_handler_t):
@@ -47,16 +47,13 @@ def init_hooks(idausr):
             self.handler = handler
 
         def activate(self, ctx):
-            _setter.push()
-            try:
+            with _setter:
                 self.handler()
-            finally:
-                _setter.pop()
 
         def update(self, ctx):
             return idaapi.AST_ENABLE_ALWAYS
 
-    for name, label, handler, before in _hooks:
+    for name, label, handler, before in _HOOKS:
         if idaapi.unregister_action(name):
             action = idaapi.action_desc_t(name, label, ActionHandler(handler))
             idaapi.register_action(action)

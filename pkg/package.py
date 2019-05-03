@@ -2,22 +2,24 @@
 Package-related classes and methods are in pkg.package module. All constructing arguments are accessible via property.
 """
 
+from StringIO import StringIO
+
 import os
 import sys
 import json
 import glob
 import shutil
+import random
 import zipfile
 import urllib2
-import traceback
+
 import ida_loader
-from StringIO import StringIO
 
 from .config import g
-from .downloader import download
-from .logger import logger
+from .downloader import _download
+from .logger import getLogger
 from .env import ea as current_ea, os as current_os
-from .util import putenv, execute_in_main_thread
+from .util import putenv, execute_in_main_thread, rename
 from .virtualenv_utils import FixInterpreter
 
 from . import internal_api
@@ -25,8 +27,10 @@ from . import internal_api
 ALL_EA = (32, 64)
 __all__ = ["LocalPackage", "InstallablePackage"]
 
+log = getLogger(__name__)
 
-def get_native_suffix():
+
+def _get_native_suffix():
     if current_os == 'win':
         suffix = '.dll'
     elif current_os == 'linux':
@@ -38,7 +42,7 @@ def get_native_suffix():
     return suffix
 
 
-def uniq(items):
+def _unique_items(items):
     seen = set()
     res = [(item, seen.add(item))[0] for item in items if item not in seen]
     return res
@@ -47,13 +51,13 @@ def uniq(items):
 def _idausr_add_unix(orig, new):
     if orig is None:
         orig = os.path.join(os.getenv('HOME'), '.idapro')
-    return ':'.join(uniq(orig.split(':') + [new]))
+    return ':'.join(_unique_items(orig.split(':') + [new]))
 
 
 def _idausr_add_win(orig, new):
     if orig is None:
         orig = os.path.join(os.getenv('APPDATA'), 'Hex-Rays', 'IDA Pro')
-    return ';'.join(uniq(orig.split(';') + [new]))
+    return ';'.join(_unique_items(orig.split(';') + [new]))
 
 
 def _idausr_add(orig, new):
@@ -63,7 +67,7 @@ def _idausr_add(orig, new):
         return _idausr_add_unix(orig, new)
 
 
-def idausr_remove(orig, target):
+def _idausr_remove(orig, target):
     if current_os == 'win':
         sep = ';'
     else:
@@ -78,18 +82,10 @@ def idausr_remove(orig, target):
     return sep.join(orig)
 
 
-class Package(object):
-    def __init__(self, id, version):
+class LocalPackage(object):
+    def __init__(self, id, path, version):
         self.id = str(id)
         self.version = str(version)
-
-    def __repr__(self):
-        raise NotImplementedError
-
-
-class LocalPackage(Package):
-    def __init__(self, id, path, version):
-        super(LocalPackage, self).__init__(id, version)
 
         self.path = os.path.normpath(path)
 
@@ -97,57 +93,71 @@ class LocalPackage(Package):
         """
         Removes a package.
         """
-        with open(os.path.join(self.path, '.removed'), 'wb'):
-            pass
-
         idausr = os.environ.get('IDAUSR', '')
         if self.path in idausr:
-            new = idausr_remove(idausr, self.path)
+            new = _idausr_remove(idausr, self.path)
             putenv('IDAUSR', new)
 
             internal_api.invalidate_idausr()
 
         if not LocalPackage._remove_package_dir(self.path):
-            logger.error(
+            log.error(
                 "Package directory is in use and will be removed after restart.")
 
-        logger.info("Done!")
+            # If not modified, the only case this fails is, custom ld.so or windows.
+            # Latter case is common.
+            new_path = self.path.rstrip('/\\') + '-removed'
+            if os.path.exists(new_path):
+                new_path += '-%x' % random.getrandbits(64)
+            rename(self.path, new_path)
+            # XXX: is it good to mutate this object?
+            self.path = new_path
+
+        log.info("Done!")
 
     @staticmethod
     def _remove_package_dir(path):
         errors = []
 
-        def onerror(_listdir, _path, exc):
-            logger.error(str(exc))
-            errors.append(exc)
+        def onerror(_listdir, _path, exc_info):
+            log.error("%s: %s", _path, str(exc_info[1]))
+            errors.append(exc_info[1])
 
         shutil.rmtree(path, onerror=onerror)
 
+        if errors:
+            # Mark for later removal
+            with open(os.path.join(path, '.removed'), 'wb'):
+                pass
+
         return not errors
 
-    def install(self):
+    def install(self, remove_on_fail=False):
         """
         Run python scripts specified by :code:`installers` field in `info.json`.
+
+        :returns: None
         """
         orig_cwd = os.getcwd()
         try:
             os.chdir(self.path)
             info = self.metadata()
-            t = info.get('installers', [])
-            if not isinstance(t, list):
+            scripts = info.get('installers', [])
+            if not isinstance(scripts, list):
                 raise Exception(
                     '%r Corrupted package: installers key is not list')
             with FixInterpreter():
-                for script in t:
-                    logger.info('Executing installer path %r...' % script)
+                for script in scripts:
+                    log.info('Executing installer path %r...', script)
                     script = os.path.join(self.path, script)
                     execfile(script, {
                         __file__: script
                     })
-            logger.info('Done!')
+            log.info('Done!')
         except:
-            logger.info('Installer failed!')
-            self.remove()
+            log.info('Installer failed!')
+            if remove_on_fail:
+                self.remove()
             raise
         finally:
             os.chdir(orig_cwd)
@@ -163,8 +173,18 @@ class LocalPackage(Package):
 
         env = str(_idausr_add(os.getenv('IDAUSR'), self.path))
         # XXX: find a more efficient way to ensure dependencies
+        errors = []
         for dependency in self.metadata().get('dependencies', {}).keys():
-            LocalPackage.by_name(dependency).load()
+            dep = LocalPackage.by_name(dependency)
+            if not dep:
+                errors.append('Dependency not found: %r' % dependency)
+                continue
+            dep.load()
+
+        if errors:
+            for error in errors:
+                log.error(error)
+            return
 
         def handler():
             # Load plugins immediately
@@ -188,9 +208,19 @@ class LocalPackage(Package):
         execute_in_main_thread(handler)
 
     def populate_env(self):
-        # passive version of load
+        "passive version of load"
+        errors = []
         for dependency in self.metadata().get('dependencies', {}).keys():
-            LocalPackage.by_name(dependency).populate_env()
+            dep = LocalPackage.by_name(dependency)
+            if not dep:
+                errors.append('Dependency not found: %r' % dependency)
+                continue
+            dep.populate_env()
+
+        if errors:
+            for error in errors:
+                log.error(error)
+            return
 
         putenv('IDAUSR', str(_idausr_add(os.getenv("IDAUSR"), self.path)))
         sys.path.append(self.path)
@@ -201,7 +231,7 @@ class LocalPackage(Package):
             for path in glob.glob(expr):
                 callback(str(path))
 
-        for suffix in (get_native_suffix(),):
+        for suffix in (_get_native_suffix(),):
             expr = os.path.join(self.path, path, '*' + suffix)
             for path in glob.glob(expr):
                 is64 = path[:-len(suffix)][-2:] == '64'
@@ -213,8 +243,8 @@ class LocalPackage(Package):
         """
         Loads :code:`info.json` and returns a parsed JSON object.
         """
-        with open(os.path.join(self.path, 'info.json'), 'rb') as f:
-            return json.load(f)
+        with open(os.path.join(self.path, 'info.json'), 'rb') as _file:
+            return json.load(_file)
 
     @staticmethod
     def by_name(name, prefix=None):
@@ -234,14 +264,15 @@ class LocalPackage(Package):
 
         info_json = os.path.join(path, 'info.json')
         if not os.path.isfile(info_json):
-            logger.debug('Warning: info.json is not found at %r' % path)
+            log.debug('Warning: info.json is not found at %r', path)
             return None
 
-        with open(info_json, 'rb') as f:
-            info = json.load(f)
-            result = LocalPackage(
-                id=info['_id'], path=path, version=info['version'])
-            return result
+        with open(info_json, 'rb') as _file:
+            info = json.load(_file)
+
+        result = LocalPackage(
+            id=info['_id'], path=path, version=info['version'])
+        return result
 
     @staticmethod
     def all():
@@ -251,9 +282,9 @@ class LocalPackage(Package):
         prefix = g['path']['packages']
 
         res = os.listdir(prefix)
-        res = filter(lambda x: os.path.isdir(os.path.join(prefix, x)), res)
-        res = map(lambda x: LocalPackage.by_name(x), res)
-        res = filter(lambda x: x, res)
+        res = (x for x in res if os.path.isdir(os.path.join(prefix, x)))
+        res = (LocalPackage.by_name(x) for x in res)
+        res = [x for x in res if x]
         return res
 
     def __repr__(self):
@@ -261,9 +292,10 @@ class LocalPackage(Package):
                (self.id, self.path, self.version)
 
 
-class InstallablePackage(Package):
+class InstallablePackage(object):
     def __init__(self, id, name, version, repo):
-        super(InstallablePackage, self).__init__(id, version)
+        self.id = str(id)
+        self.version = str(version)
         self.name = name
         self.repo = repo
 
@@ -290,30 +322,38 @@ class InstallablePackage(Package):
             top_level = False
 
         if spec in _visited:
-            logger.warn("Cyclic dependency found when installing %r <-> %r" %
-                        (spec, _visited))
+            log.warn("Cyclic dependency found when installing %r <-> %r",
+                        spec, _visited)
             return
 
         _visited.add(spec)
 
-        data = download(repo.url + '/download?spec=' + urllib2.quote(spec)).read()
+        data = _download(repo.url + '/download?spec=' +
+                         urllib2.quote(spec)).read()
         io = StringIO(data)
 
         f = zipfile.ZipFile(io, 'r')
         info = json.load(f.open('info.json'))
 
         prev = LocalPackage.by_name(info['_id'])
-        already_installed = prev and (
-            not upgrade or prev.version == info['version'])
 
-        if not already_installed:
+        # XXX: semver.gt for check (currently server does this)
+        satisfied = prev and not (upgrade and prev.version != info['version'])
+
+        if not satisfied:
             install_path = os.path.join(g['path']['packages'], info["_id"])
 
+            # NOTE: this ensures os.path.exists(install_path) == False
+            if prev and upgrade:
+                prev.remove()
+                assert not os.path.exists(install_path)
+
+            # XXX: edge case?
             removed = os.path.join(install_path, '.removed')
             if os.path.isfile(removed):
                 os.unlink(removed)
 
-            logger.info('Extracting into %r...' % install_path)
+            log.info('Extracting into %r...', install_path)
             f.extractall(install_path)
 
             # Initiate LocalPackage object
@@ -321,20 +361,21 @@ class InstallablePackage(Package):
         else:
             pkg = prev
 
-            logger.info("Requirement already satisfied: %s %s" %
-                        (info['_id'], info['version']))
+            log.info("Requirement already satisfied: %s %s",
+                        info['_id'], info['version'])
 
         # First, install dependencies
         # TODO: add version check
-        for dep_name, dep_spec in info.get('dependencies', {}).items():
-            InstallablePackage.install_from_repo(repo, dep_name, upgrade, _visited)
+        for dep_name in info.get('dependencies', {}).keys():
+            InstallablePackage.install_from_repo(
+                repo, dep_name, upgrade, _visited)
 
-        if not already_installed:
+        if not satisfied:
             pkg.install()
 
         pkg.load()
         if top_level:
-            logger.info("Done!")
+            log.info("Done!")
 
         return pkg
 

@@ -1,62 +1,68 @@
+"""
+Both method redirects stdout to IDA Pro's console.
+"""
+
 import Queue
 import sys
 import threading
 import time
-from PyQt5.QtCore import QCoreApplication
+
 from subprocess import Popen as _Popen, PIPE, STDOUT
+from PyQt5.QtCore import QCoreApplication
 
 
-def Popen(*args, **kwargs):
+class Popen(_Popen):
     """
-    Wrapper around :py:meth:`subprocess.Popen`, except that if stdout is not given, it'll redirect stdout to messages window.
+    Subclass of :py:meth:`subprocess.Popen` that
+    if stdout is not given, it'll redirect stdout to messages window.
     """
-    if 'stdout' not in kwargs:
-        kwargs['stdout'] = PIPE
-        if 'stderr' not in kwargs:
-            kwargs['stderr'] = STDOUT
+    def __init__(self, *args, **kwargs):
+        if 'stdout' not in kwargs:
+            kwargs['stdout'] = PIPE
+            if 'stderr' not in kwargs:
+                kwargs['stderr'] = STDOUT
 
-    else:
-        return _Popen(*args, **kwargs)
+            queue = Queue.Queue()
+            done = []
 
-    q = Queue.Queue()
-    done = []
-
-    def receiver_thread():
-        buff = []
-        last_output_time = time.time()
-        while not (done and q.empty()):
-            cur_time = time.time()
-            if last_output_time < cur_time - 0.01:
+            def _receiver():
+                buff = []
+                last_output_time = time.time()
+                while not (done and queue.empty()):
+                    cur_time = time.time()
+                    if last_output_time < cur_time - 0.01:
+                        sys.stdout.write(''.join(buff).replace('\r', ''))
+                        last_output_time = cur_time
+                        buff[:] = []
+                    try:
+                        item = queue.get(timeout=0.01)
+                    except Queue.Empty:
+                        continue
+                    buff.append(item)
+                    queue.task_done()
                 sys.stdout.write(''.join(buff).replace('\r', ''))
-                last_output_time = cur_time
-                buff[:] = []
-            try:
-                item = q.get(timeout=0.01)
-            except Queue.Empty:
-                continue
-            buff.append(item)
-            q.task_done()
-        sys.stdout.write(''.join(buff).replace('\r', ''))
 
-    def reader_thread():
-        while True:
-            c = p.stdout.read(1)
-            if not c:
-                done.append(True)
-                break
-            q.put(c)
+            def _reader():
+                while True:
+                    byte = self.stdout.read(1)
+                    if not byte:
+                        done.append(True)
+                        break
+                    queue.put(byte)
 
-    p = _Popen(*args, **kwargs)
+            # Now launch the process
+            super(Popen, self).__init__(*args, **kwargs)
 
-    t1 = threading.Thread(target=reader_thread)
-    t2 = threading.Thread(target=receiver_thread)
+            t_reader = threading.Thread(target=_reader)
+            t_receiver = threading.Thread(target=_receiver)
 
-    t1.start()
-    t2.start()
+            t_reader.start()
+            t_receiver.start()
 
-    p.threads = t1, t2
-
-    return p
+            self.threads = t_reader, t_receiver
+        else:
+            # No need to do anything
+            super(Popen, self).__init__(*args, **kwargs)
 
 
 def system(cmd):
@@ -65,16 +71,18 @@ def system(cmd):
 
     :param cmd: Command to execute.
     :return: exit status.
+    :rtype: int
     """
-    p = Popen(cmd, shell=True)
-    # trigger trace callback to prevent hang
-    t1, t2 = p.threads
+    process = Popen(cmd, shell=True)
+
+    # call processEvents() to prevent hang
     timeout = 0.01
-    while t1.is_alive() and t2.is_alive():
-        t1.join(timeout)
-        t2.join(timeout)
+    while all(thread.is_alive() for thread in process.threads):
+        for thread in process.threads:
+            thread.join(timeout)
         QCoreApplication.processEvents()
-    return p.wait()
+
+    return process.wait()
 
 
 if __name__ == '__main__':

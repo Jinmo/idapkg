@@ -43,7 +43,7 @@ def __fetch(orig_url, timeout):
     return res, orig_url
 
 
-def download_multi(urls, cb, timeout=None):
+def _download_multi(urls, cb, timeout=None):
     concurrent = min(len(urls), MAX_CONCURRENT)
     q = Queue(concurrent)
     for url in urls:
@@ -55,11 +55,11 @@ def download_multi(urls, cb, timeout=None):
     q.join()
 
 
-def download(url, timeout=None):
+def _download(url, timeout=None):
     results = [None]
 
     def set_res(res, _url):
         results[0] = res
 
-    download_multi([url], set_res, timeout)
+    _download_multi([url], set_res, timeout)
     return results[0]

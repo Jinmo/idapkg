@@ -3,7 +3,9 @@ from __palette__ import Palette, show_palette, Action
 from pkg.package import LocalPackage
 from pkg.repo import get_online_packages, Repository
 from pkg.util import register_action, __work
-from pkg.logger import logger
+from pkg.logger import getLogger
+
+log = getLogger(__name__)
 
 
 @register_action('Packages: Install Package')
@@ -28,13 +30,13 @@ def remove_plugins():
 def upgrade_plugins():
     actions = LocalPackage.all()
     actions = [(lambda _: Action(id=_.id, description='%s %s' % (_.id, _.version),
-                                 handler=lambda action: __work(lambda: install(action.id))))(item) for item in actions]
+                                 handler=lambda action: __work(lambda: _upgrade_package(action.id))))(item) for item in actions]
 
     show_palette(Palette('remove', "Enter package name to remove...", actions))
 
 
-def install(name):
-    logger.info("Upgrading package %s..." % name)
+def _upgrade_package(name):
+    log.info("Upgrading package %s..." % name)
     repos = Repository.from_urls()
     res = None
     for repo in repos:
@@ -43,5 +45,5 @@ def install(name):
             res.install(upgrade=True)
             return
 
-    logger.info(
+    log.info(
         "Package not found on all repositories! Please check ~/idapkg/config.json")

@@ -1,6 +1,25 @@
-import logging
-import sys
+"""
+Logging module
+"""
+import logging, sys
 
-logging.basicConfig(stream=sys.stdout, level=logging.INFO)
+def getLogger(name):
+    """
+    Returns a logger. Wrapper of logging.getLogger
+    """
+    logger = logging.getLogger(name)
+    return logger
 
-logger = logging.getLogger(__name__)
+
+def _install_handler():
+    logger = logging.getLogger('pkg')
+    if not logger.handlers:
+        console = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter(logging.BASIC_FORMAT, None)
+        console.setFormatter(formatter)
+        logger.addHandler(console)
+        logger.setLevel(logging.INFO)
+    return
+
+
+_install_handler()

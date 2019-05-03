@@ -5,11 +5,13 @@ import idaapi
 
 from pkg.virtualenv_utils import prepare_virtualenv
 from pkg.package import LocalPackage, InstallablePackage
-from pkg.logger import logger
+from pkg.logger import getLogger
 from pkg.util import putenv
 from pkg.repo import Repository
 
 from . import __version__
+
+log = getLogger(__name__)
 
 RC = """
 def init_idapkg():
@@ -81,7 +83,7 @@ def init_environment(load=True):
     """
     Must be called from idapythonrc.py. I didn't test other cases.
     """
-    logger.info("idapkg version %s" % __version__)
+    log.info("idapkg version %s" % __version__)
     prepare_virtualenv(wait=True)
 
     _initial_deps = ['ifred']
@@ -93,8 +95,8 @@ def init_environment(load=True):
                 ._find_loadable_modules('plugins', ida_loader.load_plugin)
 
     else:
-        logger.info("Downloading initial dependencies...")
-        logger.info("IDA must be restarted after printing \"Done!\"")
+        log.info("Downloading initial dependencies...")
+        log.info("IDA must be restarted after printing \"Done!\"")
         print LocalPackage.all()
 
         for _dep in _initial_deps:

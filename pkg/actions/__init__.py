@@ -1,1 +1,1 @@
-from .packagemanager import *
+from . import packagemanager

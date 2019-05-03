@@ -55,6 +55,14 @@ def putenv(key, value):
         ctypes.windll.ucrtbase._putenv('='.join((key, value)))
 
 
+def rename(old, new):
+    if sys.platform == 'win32':
+        if not ctypes.windll.kernel32.MoveFileExA(str(old), str(new), 0):
+            raise WindowsError(ctypes.windll.kernel32.GetLastError())
+    else:
+        return os.rename()
+
+
 class Worker(PyQt5.QtCore.QObject):
     work = PyQt5.QtCore.pyqtSignal()
 

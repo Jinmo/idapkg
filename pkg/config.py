@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name
 """
 This module generates and manages config data. Initial config is like this:
 
@@ -27,35 +28,34 @@ import json
 import copy
 
 try:
-    import idaapi
+    import idaapi as _
 except ImportError:
-    print("You're running package manager not in IDA Pro. Some functionalities will be limited.")
+    print "You're running package manager not in IDA Pro. Some functionalities will be limited."
 
 BASEDIR = os.path.expanduser(os.path.join('~', 'idapkg'))
 CONFIG_PATH = os.path.join(BASEDIR, 'config.json')
 
 
-def idapkg_dir(*suffixes):
+def _idapkg_dir(*suffixes):
     path = os.path.join(BASEDIR, *suffixes)
     if not os.path.isdir(path):
         os.makedirs(path)
     return path
 
 
-def load_config():
+def _load_config():
     return json.load(open(CONFIG_PATH, 'rb'))
 
 
-def save_config(g):
-    with open(CONFIG_PATH, 'wb') as f:
-        json.dump(g, f, indent=4)
+def _save_config(data):
+    with open(CONFIG_PATH, 'wb') as config_file:
+        json.dump(data, config_file, indent=4)
 
 
 def _normalized_type(obj):
-    t = type(obj)
     if isinstance(obj, basestring):
         return basestring
-    return t
+    return type(obj)
 
 
 def _fix_missing_config(obj, reference, path=None):
@@ -67,20 +67,20 @@ def _fix_missing_config(obj, reference, path=None):
     changed = False
     obj = copy.deepcopy(obj)
 
-    for k, v in reference.items():
-        if k not in obj:
+    for key, value in reference.items():
+        if key not in obj:
             changed = True
-            obj[k] = copy.deepcopy(v)
+            obj[key] = copy.deepcopy(value)
         else:
-            t1 = _normalized_type(obj[k])
-            t2 = _normalized_type(reference[k])
-            if t1 != t2:
+            type_tar = _normalized_type(obj[key])
+            type_ref = _normalized_type(reference[key])
+            if type_tar != type_ref:
                 changed = True
-                obj[k] = copy.deepcopy(v)
-                print 'Type is different (%r): %r (saved) vs %r, replacing with initial value %r' % (
-                    ''.join(path), t1, t2, v)
-        if isinstance(obj[k], dict):
-            changed_, obj[k] = _fix_missing_config(obj[k], v, path + [k])
+                obj[key] = copy.deepcopy(value)
+                print 'Type is different (%r): %r (saved) vs %r, replacing with initial value %r' \
+                    % ('/'.join(path), type_tar, type_ref, value)
+        if isinstance(obj[key], dict):
+            changed_, obj[key] = _fix_missing_config(obj[key], value, path + [key])
             changed = changed or changed_
 
     return changed, obj
@@ -88,8 +88,8 @@ def _fix_missing_config(obj, reference, path=None):
 
 __initial_config = {
     'path': {
-        'virtualenv': idapkg_dir('python'),
-        'packages': idapkg_dir('packages')
+        'virtualenv': _idapkg_dir('python'),
+        'packages': _idapkg_dir('packages')
     },
     'repos': [
         'https://api.idapkg.com'
@@ -99,15 +99,15 @@ __initial_config = {
 
 # Step 1. create configuration
 try:
-    g = load_config()
+    g = _load_config()
     config_changed, g = _fix_missing_config(g, __initial_config)
     if config_changed:
-        save_config(g)
+        _save_config(g)
 except (IOError, ValueError):
     # save initial config
     print 'Generating initial config at', CONFIG_PATH
     g = copy.deepcopy(__initial_config)
-    save_config(__initial_config)
+    _save_config(__initial_config)
 
 # Step 2. add sys.path
 sys.path.append(g['path']['packages'])

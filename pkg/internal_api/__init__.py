@@ -1,22 +1,24 @@
+# pylint: disable=invalid-name,protected-access
 import ctypes
 import os
 import traceback
 
 import idaapi
 
-from ..config import g, save_config
+from ..config import g, _save_config
 from ..env import ea as current_ea, os as current_os
-from ..logger import logger
+from ..logger import getLogger
 from ..process import system
 
 IDADIR = os.path.dirname(os.path.dirname(idaapi.__file__))
+log = getLogger(__name__)
 
 
-def os_error():
+def _os_error():
     return Exception("unknown os: %r" % current_os)
 
 
-def ida_lib_path(ea):
+def _ida_lib_path(ea):
     ea_name = 'ida64' if ea == 64 else 'ida'
     if current_os == 'win':
         path = os.path.join(IDADIR, ea_name + ".dll")
@@ -25,27 +27,27 @@ def ida_lib_path(ea):
     elif current_os == 'linux':
         path = os.path.join(IDADIR, "lib" + ea_name + ".so")
     else:
-        raise os_error()
+        raise _os_error()
     return os.path.normpath(path)
 
 
-def ida_lib():
+def _ida_lib():
     ea_name = 'ida64' if current_ea == 64 else 'ida'
     if current_os == 'win':
         functype = ctypes.WINFUNCTYPE
         lib = getattr(ctypes.windll, ea_name)
     elif current_os == 'mac':
         functype = ctypes.CFUNCTYPE
-        lib = ctypes.CDLL(ida_lib_path(current_ea))
+        lib = ctypes.CDLL(_ida_lib_path(current_ea))
     elif current_os == 'linux':
         functype = ctypes.CFUNCTYPE
         lib = getattr(ctypes.cdll, 'lib' + ea_name)
     else:
-        raise os_error()
+        raise _os_error()
     return functype, lib
 
 
-def get_lib_base(handle):
+def _get_lib_base(handle):
     if current_os == 'win':
         return handle._handle
     elif current_os == 'mac':
@@ -65,9 +67,12 @@ def get_lib_base(handle):
 
 
 def get_extlangs():
-    functype, lib = ida_lib()
+    """
+    Wrapper around get_extlangs() in C++ API.
+    """
+    functype, lib = _ida_lib()
 
-    class extlang_t(ctypes.Structure):
+    class _extlang_t(ctypes.Structure):
         _fields_ = [
             ('size', ctypes.c_size_t),
             ('flags', ctypes.c_uint),
@@ -78,9 +83,9 @@ def get_extlangs():
         ]
 
     functype = functype(ctypes.c_size_t, (ctypes.c_void_p),
-                        ctypes.POINTER(extlang_t))
+                        ctypes.POINTER(_extlang_t))
 
-    class extlang_visitor_t(ctypes.Structure):
+    class _extlang_visitor_t(ctypes.Structure):
         _fields_ = [
             ('vtable', ctypes.POINTER(functype))
         ]
@@ -88,9 +93,9 @@ def get_extlangs():
     res = []
 
     @functype
-    def visitor(self, extlang):
+    def _visitor_func(_this, extlang):
         extlang = extlang[0]
-        new_extlang = extlang_t(
+        new_extlang = _extlang_t(
             extlang.size,
             extlang.flags,
             extlang.refcnt,
@@ -101,18 +106,15 @@ def get_extlangs():
         res.append(new_extlang)
         return 0
 
-    vtable = (functype * 1)()
-    vtable[0] = visitor
-
-    visitor = extlang_visitor_t()
-    visitor.vtable = vtable
+    vtable = (functype * 1)(_visitor_func)
+    visitor = _extlang_visitor_t(vtable)
 
     lib.for_all_extlangs(ctypes.pointer(visitor), False)
     return res
 
 
 def invalidate_proccache():
-    _, lib = ida_lib()
+    _, lib = _ida_lib()
     # This returns proccache vector
     func = lib.get_idp_descs
     func.restype = ctypes.POINTER(ctypes.c_size_t)
@@ -132,28 +134,36 @@ def invalidate_idausr():
 
     already_found = g['idausr_native_bases'][current_ea == 64]
 
-    _, lib = ida_lib()
-    base = get_lib_base(lib)
+    _, lib = _ida_lib()
+    base = _get_lib_base(lib)
+
+    if already_found is False:
+        __possible_to_invalidate = False
+        return False
 
     if already_found:
         offset = already_found
     else:
-        # Now this is tricky part
-        # First, try to analyze IDA executable
-        # 1. find "IDAUSR\0" string / 2. find code xref / 3. find return value
+        r"""
+        Now this is tricky part...
+        Analyzing the IDA executable:
+            1. find "IDAUSR\0" string
+            2. find code xref
+            3. find return value
+        """
         offset = None
-        path = ida_lib_path(current_ea)
+        path = _ida_lib_path(current_ea)
 
         try:
-            import lief
-            import capstone
+            import lief as _
+            import capstone as _
         except ImportError:
-            logger.info(
+            log.info(
                 'Installing dependencies for analyzing IDAUSR offsets...')
             system('pip install lief capstone')
 
         try:
-            logger.info('Loading offsets from IDA binary... (takes a while)')
+            log.info('Loading offsets from IDA binary... (takes a while)')
             if current_os == 'win':
                 from .win import find_idausr_offset
                 offset = find_idausr_offset(path)
@@ -164,22 +174,22 @@ def invalidate_idausr():
                 pass
         except:
             traceback.print_exc()
-            pass
 
         if offset is None:
-            logger.info(
-                "Loading processors/loaders are not supported in this platform.")
+            log.info("Loading processors/loaders requires restarting in this platform.")
+            g['idausr_native_bases'][current_ea == 64] = False
             __possible_to_invalidate = False
             return False
         else:
-            logger.info("Success!")
+            log.info("Success!")
             __possible_to_invalidate = True
             g['idausr_native_bases'][current_ea == 64] = offset
-            save_config(g)
+            _save_config(g)
 
     # qvector<qstring> *ptr(getenv("IDAUSR").split(";" or ":"))
     # ptr.len = ptr.cap = 0
     ptr = ctypes.cast(base + offset, ctypes.POINTER(ctypes.c_size_t))
     # Memory leak here, but not too much.
+    # TODO: we can use qvector.clear() here?
     ptr[1] = ptr[2] = 0
     return True
