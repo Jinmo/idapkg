@@ -14,6 +14,8 @@ MAX_CONCURRENT = 10
 def __do_work(queue, callback, timeout):
     while not queue.empty():
         url = queue.get()
+        if url is None:
+            break
         try:
             status, url = __fetch(url, timeout)
             callback(status, url)
@@ -46,13 +48,12 @@ def __fetch(orig_url, timeout):
 def _download_multi(urls, cb, timeout=None):
     concurrent = min(len(urls), MAX_CONCURRENT)
     q = Queue(concurrent)
+
     for url in urls:
         q.put(url)
+
     for i in range(concurrent):
-        t = Thread(target=__do_work, args=(q, cb, timeout))
-        t.daemon = True
-        t.start()
-    q.join()
+        __do_work(q, cb, timeout)
 
 
 def _download(url, timeout=None):
@@ -63,3 +64,7 @@ def _download(url, timeout=None):
 
     _download_multi([url], set_res, timeout)
     return results[0]
+
+if __name__ == '__main__':
+    t = Thread(target=lambda: _download('https://idapkg.com'))
+    t.start()

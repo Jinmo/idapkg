@@ -14,6 +14,7 @@ import zipfile
 import urllib2
 
 import ida_loader
+from semantic_version import Version, Spec
 
 from .config import g
 from .downloader import _download
@@ -293,20 +294,22 @@ class LocalPackage(object):
 
 
 class InstallablePackage(object):
-    def __init__(self, id, name, version, repo):
+    def __init__(self, id, name, version, description, repo):
         self.id = str(id)
-        self.version = str(version)
         self.name = name
+        self.version = str(version)
+        self.description = description
         self.repo = repo
 
     def install(self, upgrade=False):
         """
         Just calls :code:`InstallablePackage.install_from_repo(self.repo, self.id, upgrade)`.
         """
-        InstallablePackage.install_from_repo(self.repo, self.id, upgrade)
+        InstallablePackage.install_from_repo(
+            self.repo, self.id, allow_upgrade=upgrade)
 
     @staticmethod
-    def install_from_repo(repo, spec, upgrade=False, _visited=None):
+    def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visited=None):
         """
         This method downloads a package satisfying spec.
 
@@ -321,30 +324,54 @@ class InstallablePackage(object):
         else:
             top_level = False
 
-        if spec in _visited:
+        if name in _visited:
             log.warn("Cyclic dependency found when installing %r <-> %r",
-                        spec, _visited)
+                     name, _visited)
             return
 
-        _visited.add(spec)
+        _visited.add(name)
 
-        data = _download(repo.url + '/download?spec=' +
-                         urllib2.quote(spec)).read()
-        io = StringIO(data)
+        prev = LocalPackage.by_name(name)
 
-        f = zipfile.ZipFile(io, 'r')
-        info = json.load(f.open('info.json'))
+        _version_spec = Spec(version_spec)
+        satisfies_local = prev and Version(prev.version) in _version_spec
 
-        prev = LocalPackage.by_name(info['_id'])
+        if allow_upgrade or not satisfies_local:
+            log.debug("Fetching releases for %r from %r...", name, repo)
 
-        # XXX: semver.gt for check (currently server does this)
-        satisfied = prev and not (upgrade and prev.version != info['version'])
+            releases = _download(repo.url + '/releases?name=' +
+                                 urllib2.quote(name)).read()
+            releases = json.loads(releases)
+            if not releases['success']:
+                error = "Release not found on remote repository: %r on %r (error: %r)" % (
+                    name, repo, releases['error'])
+                raise Exception(error)
 
-        if not satisfied:
+            releases = [release for release in releases['data']
+                        if Version(release['version']) in _version_spec]
+
+            if not releases:
+                error = ""
+                raise Exception()
+
+            # select latest release
+            release = releases[-1]
+            downloading = None if (
+                prev and release['version'] == prev.version) else release['version']
+        else:
+            downloading = None
+
+        if downloading:
+            data = _download(repo.url + '/download?spec=' +
+                             urllib2.quote(name) + '==' + urllib2.quote(downloading)).read()
+            io = StringIO(data)
+            f = zipfile.ZipFile(io, 'r')
+
+            info = json.load(f.open('info.json'))
             install_path = os.path.join(g['path']['packages'], info["_id"])
 
             # NOTE: this ensures os.path.exists(install_path) == False
-            if prev and upgrade:
+            if prev:
                 prev.remove()
                 assert not os.path.exists(install_path)
 
@@ -361,16 +388,17 @@ class InstallablePackage(object):
         else:
             pkg = prev
 
-            log.info("Requirement already satisfied: %s %s",
-                        info['_id'], info['version'])
+            log.info("Requirement already satisfied: %s%s",
+                     name, '' if version_spec == '*' else version_spec)
 
         # First, install dependencies
         # TODO: add version check
-        for dep_name in info.get('dependencies', {}).keys():
+        for dep_name, dep_version_spec in pkg.metadata().get('dependencies', {}).items():
+            print dep_name, dep_version_spec
             InstallablePackage.install_from_repo(
-                repo, dep_name, upgrade, _visited)
+                repo, dep_name, dep_version_spec, allow_upgrade, _visited)
 
-        if not satisfied:
+        if downloading:
             pkg.install()
 
         pkg.load()

@@ -2,8 +2,25 @@
 Some console-friendly methods are exposed in pkg.*, and defined at pkg.commands.
 """
 from .package import InstallablePackage, LocalPackage
+from .repo import Repository
 from .util import __work
+
+import re
+import semantic_version
+
 __all__ = []
+
+
+def _parse_spec(spec):
+    match = re.match("^([a-zA-Z0-9\\-]*)(.*)$", spec)
+    name = match.group(1)
+    version = match.group(2).strip()
+
+    # Validate spec by parsing it
+    version = '*' if not version else version
+    semantic_version.Spec(version)
+
+    return name, version
 
 
 def _export(func):
@@ -21,7 +38,9 @@ def install(spec, repo, upgrade=False):
     :param repo: URL of the repository.
     :param upgrade: Upgrade when already installed if True.
     """
-    return __work(lambda: InstallablePackage.install_from_repo(repo, spec, upgrade))
+    spec = _parse_spec(spec)
+    repo = Repository(repo)
+    return __work(lambda: InstallablePackage.install_from_repo(repo, spec[0], spec[1], upgrade))
 
 
 @_export

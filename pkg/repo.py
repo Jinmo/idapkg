@@ -19,8 +19,15 @@ class Repository(object):
     """
 
     def __init__(self, url, timeout=TIMEOUT):
-        self.url = url
-        self.timeout = timeout
+        if isinstance(url, Repository):
+            self.url = url.url
+            self.timeout = url.timeout
+        elif isinstance(url, basestring):
+            self.url = url
+            self.timeout = timeout
+        else:
+            raise ValueError(
+                "url must be Repository instance or str | unicode.")
 
     def single(self, name):
         """
@@ -42,7 +49,7 @@ class Repository(object):
             else:
                 item = res['data']
                 return InstallablePackage(
-                    name=item['name'], id=item['id'], version=item['version'], repo=self)
+                    name=item['name'], id=item['id'], version=item['version'], description=item['description'], repo=self)
 
     def list(self):
         """
@@ -63,7 +70,7 @@ class Repository(object):
             # Only list non-installed packages
             return [
                 InstallablePackage(
-                    name=item['name'], id=item['id'], version=item['version'], repo=self)
+                    name=item['name'], id=item['id'], version=item['version'], description=item['description'], repo=self)
                 for item in res['data'] if LocalPackage.by_name(item['id']) is None
             ]
         except ValueError:

@@ -4,6 +4,6 @@
 	"name": "idapkg",
 	"description": "idapkg Core package",
 	"dependencies": {
-		"ifred": "*"
+		"ifred": ">=1.0.2"
 	}
 }

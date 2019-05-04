@@ -11,8 +11,9 @@ log = getLogger(__name__)
 @register_action('Packages: Install Package')
 def install_plugins():
     actions = get_online_packages()
-    actions = [(lambda _: Action(id=_.id, description=_.name, handler=lambda action: __work(_.install)))(item)
+    actions = [(lambda _: Action(id=_.id, name=_.name, description=_.description, handler=lambda action: __work(_.install)))(item)
                for item in actions]
+    __builtins__['actions'] = actions
     show_palette(
         Palette('install', "Enter package name to install...", actions))
 
@@ -20,7 +21,7 @@ def install_plugins():
 @register_action('Packages: Remove Package')
 def remove_plugins():
     actions = LocalPackage.all()
-    actions = [(lambda _: Action(id=_.id, description='%s %s' % (_.id, _.version),
+    actions = [(lambda _: Action(id=_.id, name='%s %s' % (_.id, _.version),
                                  handler=lambda action: __work(_.remove)))(item) for item in actions]
 
     show_palette(Palette('remove', "Enter package name to remove...", actions))
@@ -29,7 +30,7 @@ def remove_plugins():
 @register_action('Packages: Upgrade Package')
 def upgrade_plugins():
     actions = LocalPackage.all()
-    actions = [(lambda _: Action(id=_.id, description='%s %s' % (_.id, _.version),
+    actions = [(lambda _: Action(id=_.id, name='%s %s' % (_.id, _.version),
                                  handler=lambda action: __work(lambda: _upgrade_package(action.id))))(item) for item in actions]
 
     show_palette(Palette('remove', "Enter package name to remove...", actions))
