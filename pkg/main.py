@@ -89,6 +89,12 @@ def init_environment(load=True):
     _initial_deps = ['ifred']
     _original_idausr = os.getenv('IDAUSR', '')
 
+    if not load:
+        # Initialize native offsets and return
+        from pkg.internal_api import invalidate_idausr
+        invalidate_idausr()
+        return
+
     if all(LocalPackage.by_name(_dep) for _dep in _initial_deps):
         for _dep in _initial_deps:
             LocalPackage.by_name(_dep) \
@@ -101,9 +107,6 @@ def init_environment(load=True):
         for _dep in _initial_deps:
             InstallablePackage \
                 .install_from_repo(Repository('https://api.idapkg.com'), _dep)
-
-    if not load:
-        return
 
     for pkg in LocalPackage.all():
         pkg.populate_env()
