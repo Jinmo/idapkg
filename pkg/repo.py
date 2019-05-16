@@ -97,7 +97,7 @@ def get_online_packages(repos=None):
     Generates a list of packages from specified repositories.
 
     :param repos: Array of repository urls (string). Default: g['repos']
-    :returns: Array of :class:`~pkg.package.InstallablePackage` pointing valid repos.
+    :returns: list(:class:`~pkg.package.InstallablePackage`) freom each repos.
     """
 
     repos = Repository.from_urls()

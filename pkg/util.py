@@ -1,5 +1,6 @@
 import threading
 import ctypes
+import time
 import sys
 import os
 
@@ -63,23 +64,24 @@ def rename(old, new):
         return os.rename()
 
 
-class Worker(PyQt5.QtCore.QObject):
-    work = PyQt5.QtCore.pyqtSignal()
+class Worker(PyQt5.QtCore.QEvent):
+    def __init__(self, func, *args):
+        super(Worker, self).__init__(0)
+        self.func = func
 
-    def __init__(self):
-        super(Worker, self).__init__()
-        self.mutex = PyQt5.QtCore.QMutex()
-        self.cond = PyQt5.QtCore.QWaitCondition()
-        self.finished = False
+    def __del__(self):
+        self.func()
 
 
 def execute_in_main_thread(func):
-    signal_source = Worker()
-    signal_source.moveToThread(PyQt5.QtWidgets.qApp.thread())
+    lock = threading.Lock()
 
-    signal_source.mutex.lock()
-    signal_source.work.connect(lambda: [func(), signal_source.mutex.unlock()])
-    signal_source.work.emit()
+    def _handler():
+        lock.acquire()
+        worker = Worker(lambda: (lock.release(), func()))
+        PyQt5.QtCore.QCoreApplication.postEvent(PyQt5.QtWidgets.qApp, worker)
 
-    signal_source.mutex.lock()
-    signal_source.mutex.unlock()
+    _handler()
+    PyQt5.QtCore.QCoreApplication.processEvents()
+    lock.acquire()
+    lock.release()

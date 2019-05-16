@@ -97,7 +97,6 @@ def init_environment(load=True):
     else:
         log.info("Downloading initial dependencies...")
         log.info("IDA must be restarted after printing \"Done!\"")
-        print LocalPackage.all()
 
         for _dep in _initial_deps:
             InstallablePackage \

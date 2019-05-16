@@ -2,7 +2,6 @@
 import ctypes
 import os
 import traceback
-
 import idaapi
 
 from ..config import g, _save_config
@@ -10,7 +9,7 @@ from ..env import ea as current_ea, os as current_os
 from ..logger import getLogger
 from ..process import system
 
-IDADIR = os.path.dirname(os.path.dirname(idaapi.__file__))
+IDADIR = idaapi.idadir('')
 log = getLogger(__name__)
 
 
