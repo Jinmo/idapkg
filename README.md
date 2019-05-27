@@ -8,7 +8,7 @@ Execute the script below in IDAPython console (minified [`installer.py`](https:/
 
 ```
 import urllib,zipfile,tempfile,sys,os,threading,shutil
-def b():P=os.path;r='0.1.0';n=tempfile.NamedTemporaryFile(delete=False,suffix='.zip');n.close();print 'Downloading idapkg...';urllib.urlretrieve('https://github.com/Jinmo/idapkg/archive/v%s.zip'%r,n.name);f=open(n.name,'rb+');f.seek(0,2);f.truncate(f.tell()-0x28);f.close();z=zipfile.ZipFile(n.name);J=z.namelist()[0];sys.path+=[P.join(n.name,J)];from pkg.config import g;import pkg.main as main;S=g['path']['packages'];z.extractall(S);z.close();Y=P.join(S,'idapkg');P.isdir(Y)and shutil.rmtree(Y);os.rename(P.join(S,J),Y);main.update_pythonrc();main.init_environment(False);print 'Installation success! Please restart IDA to use idapkg.';os.unlink(n.name);
+def b():P=os.path;r='v0.1.1';n=tempfile.NamedTemporaryFile(delete=False,suffix='.zip');n.close();print 'Downloading idapkg...';urllib.urlretrieve('https://github.com/Jinmo/idapkg/archive/%s.zip'%r,n.name);f=open(n.name,'rb+');f.seek(0,2);f.truncate(f.tell()-0x28);f.close();z=zipfile.ZipFile(n.name);J=z.namelist()[0];sys.path+=[P.join(n.name,J)];from pkg.config import g;import pkg.main as main;S=g['path']['packages'];z.extractall(S);z.close();Y=P.join(S,'idapkg');P.isdir(Y)and shutil.rmtree(Y);os.rename(P.join(S,J),Y);main.update_pythonrc();main.init_environment(False);print 'Installation success! Please restart IDA to use idapkg.';os.unlink(n.name);
 threading.Thread(target=b).start()
 ```
 
@@ -16,7 +16,7 @@ Then you can access related actions via command palette (Ctrl+Shift+P on windows
 
 ## What file is created
 
-`~(Your home directory)/idapkg` will be created.
+`~(Your home directory)/idapkg`, and some lines in idapythonrc.py will be created.
 
 ```
 idapkg/
