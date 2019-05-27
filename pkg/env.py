@@ -32,12 +32,7 @@ def __load_version_from_ida():
         _ea = 32
 
     _os = OS_MAP[sys.platform]
-    _version = idaapi.get_kernel_version()
-
-    _version = re.sub(r'^(\d.)0(\d.*)', r'\1\2', _version)
-    _version = Decimal(_version)
-
-    return _ea, _os, _version
+    return _ea, _os
 
 
 version_info_cls = collections.namedtuple('VersionPair', 'major minor micro')
@@ -76,8 +71,10 @@ try:
     import idc
     import idaapi
 
-    ea, os, version = __load_version_from_ida()
+    ea, os = __load_version_from_ida()
+
     version_info = __load_ida_native_version()
+    version = Decimal('%d.%d' % (version_info.major, version_info.minor))
 
 except ImportError:
     pass
