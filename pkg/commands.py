@@ -4,6 +4,7 @@ Some console-friendly methods are exposed in pkg.*, and defined at pkg.commands.
 from .package import InstallablePackage, LocalPackage
 from .repo import Repository
 from .util import __work
+from .config import g
 
 import re
 import semantic_version
@@ -29,18 +30,34 @@ def _export(func):
 
 
 @_export
-def install(spec, repo, upgrade=False):
+def install(spec, repo=None, upgrade=False):
     """
     Download and install a package from specified repository.
     See :meth:`InstallablePackage.install_from_repo`.
 
     :param spec: `name==version`, or just `name` only.
-    :param repo: URL of the repository.
+    :type spec: str
+    :param repo: URL of the repository. Default: :code:`g['repos']`
+    :type repo: str or list(str) or None
     :param upgrade: Upgrade when already installed if True.
     """
-    spec = _parse_spec(spec)
-    repo = Repository(repo)
-    return __work(lambda: InstallablePackage.install_from_repo(repo, spec[0], spec[1], upgrade))
+
+    name, version = _parse_spec(spec)
+
+    def _install_from_repositories(repos):
+        pkg = remote(name, repos)
+        if pkg is None:
+            raise Exception('Package not found in all repositories: %r' % name)
+
+        InstallablePackage.install_from_repo(pkg.repo, name, version, upgrade)
+
+    if repo is None:
+        repo = g['repos']
+
+    elif isinstance(repo, basestring):
+        repo = [str(repo)]
+
+    return __work(lambda: _install_from_repositories(repo))
 
 
 @_export
@@ -65,6 +82,29 @@ def local(name):
 
 
 @_export
+def remote(name, repo=None):
+    """
+    Find a remote package from given repos.
+
+    :param name: Name of the package
+    :param repo: URL of the repository. Default: :code:`g['repos']`
+    :type repo: str or list(str) or None
+    :returns: None if package is not found, else InstallablePackage instance.
+    :rtype: InstallablePackage
+    """
+    if repo is None:
+        repo = g['repos']
+
+    for _repo in repo:
+        pkg = Repository(_repo).single(name)
+        if pkg is None:
+            continue
+        else:
+            return pkg
+    return None
+
+
+@_export
 def refresh():
     """
     Rescan and load available plugins.
@@ -73,3 +113,14 @@ def refresh():
         pkg.load()
 
     return True
+
+
+@_export
+def upgrade(spec, repo=None):
+    """
+    Upgrade specified package.
+
+    :param spec: `name==version`, or just `name` only.
+    :type spec: str
+    """
+    return install(spec, repo, upgrade=True)
