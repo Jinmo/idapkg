@@ -12,7 +12,7 @@ __all__ = []
 
 
 def _parse_spec(spec):
-    match = re.match("^([a-zA-Z0-9\\-]*)(.*)$", spec)
+    match = re.match("^([a-zA-Z0-9\\-][a-zA-Z0-9_\\-]{3,214})(.*)$", spec)
     name = match.group(1)
     version = match.group(2).strip()
 
