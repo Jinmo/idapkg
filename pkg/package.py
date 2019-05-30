@@ -2,29 +2,28 @@
 Package-related classes and methods are in pkg.package module. All constructing arguments are accessible via property.
 """
 
-from StringIO import StringIO
-
-import os
-import sys
-import json
 import glob
-import shutil
+import json
+import os
 import random
-import zipfile
-import urllib2
+import shutil
+import sys
 import threading
+import traceback
+import urllib2
+import zipfile
+from StringIO import StringIO
 
 import ida_loader
 from semantic_version import Version, Spec
 
+from . import internal_api
 from .config import g
 from .downloader import _download
-from .logger import getLogger
 from .env import ea as current_ea, os as current_os
+from .logger import getLogger
 from .util import putenv, execute_in_main_thread, rename
 from .virtualenv_utils import FixInterpreter
-
-from . import internal_api
 
 ALL_EA = (32, 64)
 __all__ = ["LocalPackage", "InstallablePackage"]
@@ -101,6 +100,16 @@ class LocalPackage(object):
             putenv('IDAUSR', new)
 
             internal_api.invalidate_idausr()
+
+        with FixInterpreter():
+            for script in self.metadata().get('uninstallers', []):
+                script = os.path.join(self.path, script)
+                try:
+                    execfile(script, {__file__: script})
+                except:
+                    # XXX: How can I rollback this?
+                    traceback.print_exc()
+                    log.warn("Uninstallation script %r exited with exception!", script)
 
         if not LocalPackage._remove_package_dir(self.path):
             log.error(
@@ -231,11 +240,13 @@ class LocalPackage(object):
         sys.path.append(self.path)
 
     def _find_loadable_modules(self, path, callback):
+        # Load modules in external languages (.py, .idc, ...)
         for suffix in ['.' + x.fileext for x in internal_api.get_extlangs()]:
             expr = os.path.join(self.path, path, '*' + suffix)
             for path in glob.glob(expr):
                 callback(str(path))
 
+        # Load native modules
         for suffix in (_get_native_suffix(),):
             expr = os.path.join(self.path, path, '*' + suffix)
             for path in glob.glob(expr):
@@ -265,6 +276,10 @@ class LocalPackage(object):
 
         path = os.path.join(prefix, name)
 
+        # check if the folder exists
+        if not os.path.isdir(path):
+            return None
+
         # filter removed package
         removed = os.path.join(path, '.removed')
         if os.path.isfile(removed):
@@ -273,11 +288,16 @@ class LocalPackage(object):
 
         info_json = os.path.join(path, 'info.json')
         if not os.path.isfile(info_json):
-            log.debug('Warning: info.json is not found at %r', path)
+            log.warn('Warning: info.json is not found at %r', path)
             return None
 
         with open(info_json, 'rb') as _file:
-            info = json.load(_file)
+            try:
+                info = json.load(_file)
+            except:
+                traceback.print_exc()
+                log.warn('Warning: info.json is not valid at %r', path)
+                return None
 
         result = LocalPackage(
             id=info['_id'], path=path, version=info['version'])

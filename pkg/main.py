@@ -3,18 +3,18 @@ import os
 import ida_loader
 import idaapi
 
-from pkg.virtualenv_utils import prepare_virtualenv
-from pkg.package import LocalPackage, InstallablePackage
 from pkg.logger import getLogger
-from pkg.util import putenv
+from pkg.package import LocalPackage, InstallablePackage
 from pkg.repo import Repository
-
+from pkg.virtualenv_utils import prepare_virtualenv
 from . import __version__
 
 log = getLogger(__name__)
 
 RC = """
-def init_idapkg():
+_idapkg_basedir = os.path.expanduser(os.path.join('~', 'idapkg'))
+
+def init_idapkg(basedir):
     "idapythonrc.py is a perfect place to initialize IDAUSR variable"
     import os
     import sys
@@ -25,7 +25,6 @@ def init_idapkg():
         print "please use the installation script below:"
         print "https://github.com/Jinmo/idapkg"
 
-    basedir = os.path.expanduser(os.path.join('~', 'idapkg'))
     config = os.path.join(basedir, 'config.json')
 
     if os.path.isfile(config):
@@ -49,8 +48,8 @@ def init_idapkg():
     else:
         return usage()
 
-init_idapkg()
-del init_idapkg
+init_idapkg(_idapkg_basedir)
+del init_idapkg, _idapkg_basedir
 """
 
 SEP = '\n# idapkg version: ', '# idapkg end\n'
@@ -84,6 +83,8 @@ def init_environment(load=True):
     Must be called from idapythonrc.py. I didn't test other cases.
     """
     log.info("idapkg version %s" % __version__)
+
+    update_pythonrc()
     prepare_virtualenv(wait=True)
 
     _initial_deps = ['ifred']

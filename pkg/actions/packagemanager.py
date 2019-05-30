@@ -1,9 +1,9 @@
 from __palette__ import Palette, show_palette, Action
 
+from pkg.logger import getLogger
 from pkg.package import LocalPackage
 from pkg.repo import get_online_packages, Repository
 from pkg.util import register_action, __work
-from pkg.logger import getLogger
 
 log = getLogger(__name__)
 

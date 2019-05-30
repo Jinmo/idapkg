@@ -11,7 +11,6 @@
 
 import collections
 import os as _os
-import re
 import sys
 from decimal import Decimal
 
@@ -35,7 +34,11 @@ def __load_version_from_ida():
     return _ea, _os
 
 
-version_info_cls = collections.namedtuple('VersionPair', 'major minor micro')
+class version_info_cls(collections.namedtuple('VersionPair', 'major minor micro')):
+    def str(self):
+        return '%s.%s.%s' % (self.major, self.minor, self.micro)
+
+
 version_info = version_info_cls(0, 0, 0)
 
 

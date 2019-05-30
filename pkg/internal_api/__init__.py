@@ -2,10 +2,11 @@
 import ctypes
 import os
 import traceback
+
 import idaapi
 
 from ..config import g, _save_config
-from ..env import ea as current_ea, os as current_os
+from ..env import ea as current_ea, os as current_os, version_info
 from ..logger import getLogger
 from ..process import system
 
@@ -131,7 +132,8 @@ def invalidate_idausr():
     if __possible_to_invalidate is False:
         return False
 
-    already_found = g['idausr_native_bases'][current_ea == 64]
+    cfg = g['idausr_native_bases'][current_os][version_info.str()]
+    already_found = cfg[current_ea == 64]
 
     _, lib = _ida_lib()
     base = _get_lib_base(lib)
@@ -176,13 +178,13 @@ def invalidate_idausr():
 
         if offset is None:
             log.info("Loading processors/loaders requires restarting in this platform.")
-            g['idausr_native_bases'][current_ea == 64] = False
+            cfg[current_ea == 64] = False
             __possible_to_invalidate = False
             return False
         else:
             log.info("Success!")
             __possible_to_invalidate = True
-            g['idausr_native_bases'][current_ea == 64] = offset
+            cfg[current_ea == 64] = offset
             _save_config(g)
 
     # qvector<qstring> *ptr(getenv("IDAUSR").split(";" or ":"))

@@ -27,28 +27,35 @@ import sys
 import json
 import copy
 
+from .env import os as current_os, version_info
+
 try:
     import idaapi as _
 except ImportError:
     print "You're running package manager not in IDA Pro. Some functionalities will be limited."
 
-BASEDIR = os.path.expanduser(os.path.join('~', 'idapkg'))
-CONFIG_PATH = os.path.join(BASEDIR, 'config.json')
+
+def basedir():
+    return os.path.expanduser(os.path.join('~', 'idapkg'))
+
+
+def config_path():
+    return os.path.join(basedir(), 'config.json')
 
 
 def _idapkg_dir(*suffixes):
-    path = os.path.join(BASEDIR, *suffixes)
+    path = os.path.join(basedir(), *suffixes)
     if not os.path.isdir(path):
         os.makedirs(path)
     return path
 
 
 def _load_config():
-    return json.load(open(CONFIG_PATH, 'rb'))
+    return json.load(open(config_path(), 'rb'))
 
 
 def _save_config(data):
-    with open(CONFIG_PATH, 'wb') as config_file:
+    with open(config_path(), 'wb') as config_file:
         json.dump(data, config_file, indent=4)
 
 
@@ -94,7 +101,11 @@ __initial_config = {
     'repos': [
         'https://api.idapkg.com'
     ],
-    'idausr_native_bases': [None, None]
+    'idausr_native_bases': {
+        current_os: {
+            version_info.str(): [None, None]
+        }
+    }
 }
 
 # Step 1. create configuration
@@ -105,7 +116,7 @@ try:
         _save_config(g)
 except (IOError, ValueError):
     # save initial config
-    print 'Generating initial config at', CONFIG_PATH
+    print 'Generating initial config at', config_path()
     g = copy.deepcopy(__initial_config)
     _save_config(__initial_config)
 
