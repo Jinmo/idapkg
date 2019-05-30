@@ -118,7 +118,7 @@ def refresh():
 @_export
 def upgrade(spec, repo=None):
     """
-    Upgrade specified package.
+    Upgrade specified package. (:code:`pkg.install(spec, repo, upgrade=True)`)
 
     :param spec: `name==version`, or just `name` only.
     :type spec: str
