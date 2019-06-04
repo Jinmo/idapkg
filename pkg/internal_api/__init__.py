@@ -157,11 +157,10 @@ def invalidate_idausr():
 
         try:
             import lief as _
-            import capstone as _
         except ImportError:
             log.info(
                 'Installing dependencies for analyzing IDAUSR offsets...')
-            system('pip install lief capstone')
+            system('pip install lief')
 
         try:
             log.info('Loading offsets from IDA binary... (takes a while)')

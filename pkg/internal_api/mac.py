@@ -1,13 +1,9 @@
 import lief
-import capstone
+from .decoder import decode_lea, RDI
 
 
 def find_idausr_offset(ida_path):
     ida = lief.parse(ida_path)
-
-    cs = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
-    csDetails = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_64)
-    csDetails.detail = True
 
     imagebase = ida.imagebase
 
@@ -25,29 +21,19 @@ def find_idausr_offset(ida_path):
         if visited[offset]:
             return
         while offset <= end:
+            offset = code.find('\x48\x8d', offset)
+
             if visited[offset]:
                 break
 
-            loop = False
-            for insn in (cs.disasm(code[offset:offset + 15], addr + offset)):
-                if visited[offset]:
-                    break
-                visited[offset] = True
-                if insn.bytes[0] == 0x48 and insn.mnemonic == 'lea':
-                    details = next(csDetails.disasm(str(bytearray(insn.bytes)), insn.address))
-                    ops = details.operands
-                    if ops[1].mem.base == capstone.x86_const.X86_REG_RIP:
-                        if target(details):
-                            print 'Found:',
-                            print hex(details.address),
-                            print details.mnemonic, details.op_str
-                            return details
-                offset = insn.address + insn.size - addr
-                loop = True
-
-            if not loop:
-                visited[offset] = True
-                offset += 1
+            visited[offset] = True
+            insn = decode_lea(addr + offset, memoryview(code)[offset:offset+15])
+            if insn and target(insn):
+                print 'Found:',
+                print hex(insn.target),
+                print insn
+                return insn
+            offset += 1
 
     def like_yara(delim, target, start=0, end=None):
         global visited
@@ -63,14 +49,11 @@ def find_idausr_offset(ida_path):
                     return res, cur - i
             cur = code.find(delim, cur + 1)
 
-    func = like_yara('\x48\x8d\x3d', lambda insn: insn.address +
-                                                  insn.size + insn.operands[1].mem.disp == string)
-    ret = like_yara('\xe8', lambda insn: insn.operands[0].reg ==
-                                         capstone.x86_const.X86_REG_RDI and insn.address != func[0].address, func[1],
+
+    func = like_yara('\x48\x8d\x3d', lambda insn: insn.target == string)
+    ret = like_yara('\xe8', lambda insn: insn.reg == RDI and insn.address != func[0].address, func[1],
                     func[1] + 0x10000)[0]
 
-    # lea rax, [rip + offset]
-    offset = ret.address + ret.size + ret.operands[1].mem.disp
-    offset -= imagebase
+    offset = ret.target - imagebase
     print 'offset:', hex(offset)
     return offset
