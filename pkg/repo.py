@@ -49,7 +49,20 @@ class Repository(object):
             else:
                 item = res['data']
                 return InstallablePackage(
-                    name=item['name'], id=item['id'], version=item['version'], description=item['description'], repo=self)
+                    name=item['name'], id=item['id'], version=item['version'], description=item['description'], author=item['author'], repo=self)
+
+    def readme(self, name):
+        endpoint = '/info'
+        res = _download(self.url + endpoint + '?id=' +
+                        urllib.quote(name), self.timeout)
+        if not res:  # Network Error
+            return
+        else:
+            res = json.load(res)
+            if not res['success']:
+                return
+            else:
+                return res['data']['readme']
 
     def list(self):
         """
@@ -70,7 +83,7 @@ class Repository(object):
             # Only list non-installed packages
             return [
                 InstallablePackage(
-                    name=item['name'], id=item['id'], version=item['version'], description=item['description'], repo=self)
+                    name=item['name'], id=item['id'], version=item['version'], description=item['description'], author=item['author'], repo=self)
                 for item in res['data'] if LocalPackage.by_name(item['id']) is None
             ]
         except ValueError:
@@ -78,6 +91,27 @@ class Repository(object):
             traceback.print_exc(file=string_io)
             log.error('Error fetching repo: %r\n%s',
                       self.url, string_io.getvalue())
+
+    def releases(self, name):
+        """
+        Fetch a list of releases of specified package.
+        """
+        endpoint = '/releases?name=' + urllib.quote(name)
+        res = _download(self.url + endpoint)
+
+        if res is None:
+            return None
+
+        releases = res.read()
+        try:
+            releases = json.loads(releases)
+            if not releases['success']:
+                log.debug("Server returned error")
+                return None
+            else:
+                return releases['data']
+        except KeyError, ValueError:
+            return None
 
     @staticmethod
     def from_urls(repos=None):

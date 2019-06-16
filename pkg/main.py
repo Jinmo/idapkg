@@ -1,7 +1,7 @@
 import os
 
 import ida_loader
-import idaapi
+import ida_diskio
 
 from pkg.logger import getLogger
 from pkg.package import LocalPackage, InstallablePackage
@@ -41,7 +41,7 @@ def init_idapkg(basedir):
             sys.path.append(idapkg_path)
             from pkg.main import init_environment
             init_environment()
-        except:
+        except Exception:
             import traceback
             traceback.print_exc()
             return usage()
@@ -56,7 +56,7 @@ SEP = '\n# idapkg version: ', '# idapkg end\n'
 
 
 def update_pythonrc():
-    rcpath = os.path.join(idaapi.get_user_idadir(), "idapythonrc.py")
+    rcpath = os.path.join(ida_diskio.get_user_idadir(), "idapythonrc.py")
     sep_with_ver = SEP[0] + __version__
     payload = '%s\n%s\n%s' % (sep_with_ver, RC.strip(), SEP[1])
     if os.path.isfile(rcpath):
@@ -119,3 +119,4 @@ def init_environment(load=True):
 
     from pkg.internal_api import invalidate_idausr
     invalidate_idausr()
+

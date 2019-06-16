@@ -1,5 +1,5 @@
 import os
-import idaapi
+import ida_kernwin
 import pkg.util
 
 from PyQt5.QtCore import QCoreApplication, QProcess
@@ -41,9 +41,9 @@ def new_instance():
 def init_hooks(idausr):
     _setter = IdausrTemporarySetter(idausr)
 
-    class ActionHandler(idaapi.action_handler_t):
+    class ActionHandler(ida_kernwin.action_handler_t):
         def __init__(self, handler):
-            idaapi.action_handler_t.__init__(self)
+            ida_kernwin.action_handler_t.__init__(self)
             self.handler = handler
 
         def activate(self, ctx):
@@ -51,10 +51,10 @@ def init_hooks(idausr):
                 self.handler()
 
         def update(self, ctx):
-            return idaapi.AST_ENABLE_ALWAYS
+            return ida_kernwin.AST_ENABLE_ALWAYS
 
     for name, label, handler, before in _HOOKS:
-        if idaapi.unregister_action(name):
-            action = idaapi.action_desc_t(name, label, ActionHandler(handler))
-            idaapi.register_action(action)
-            idaapi.attach_action_to_menu(before, name, idaapi.SETMENU_INS)
+        if ida_kernwin.unregister_action(name):
+            action = ida_kernwin.action_desc_t(name, label, ActionHandler(handler))
+            ida_kernwin.register_action(action)
+            ida_kernwin.attach_action_to_menu(before, name, ida_kernwin.SETMENU_INS)

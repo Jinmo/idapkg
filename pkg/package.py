@@ -106,10 +106,11 @@ class LocalPackage(object):
                 script = os.path.join(self.path, script)
                 try:
                     execfile(script, {__file__: script})
-                except:
+                except Exception:
                     # XXX: How can I rollback this?
                     traceback.print_exc()
-                    log.warn("Uninstallation script %r exited with exception!", script)
+                    log.warn(
+                        "Uninstallation script %r exited with exception!", script)
 
         if not LocalPackage._remove_package_dir(self.path):
             log.error(
@@ -138,8 +139,7 @@ class LocalPackage(object):
 
         if errors:
             # Mark for later removal
-            with open(os.path.join(path, '.removed'), 'wb'):
-                pass
+            open(os.path.join(path, '.removed'), 'wb').close()
 
         return not errors
 
@@ -164,7 +164,7 @@ class LocalPackage(object):
                     execfile(script, {
                         __file__: script
                     })
-        except:
+        except Exception:
             log.info('Installer failed!')
             if remove_on_fail:
                 self.remove()
@@ -197,7 +197,8 @@ class LocalPackage(object):
             return
 
         def handler():
-            assert isinstance(threading.current_thread(), threading._MainThread)
+            assert isinstance(threading.current_thread(),
+                              threading._MainThread)
             # Load plugins immediately
             # processors / loaders will be loaded on demand
             sys.path.append(self.path)
@@ -238,6 +239,20 @@ class LocalPackage(object):
 
         putenv('IDAUSR', str(_idausr_add(os.getenv("IDAUSR"), self.path)))
         sys.path.append(self.path)
+
+    def plugins(self):
+        return self._collect_modules('plugins')
+
+    def loaders(self):
+        return self._collect_modules('loaders')
+
+    def procs(self):
+        return self._collect_modules('procs')
+
+    def _collect_modules(self, category):
+        result = []
+        self._find_loadable_modules(category, result.append)
+        return result
 
     def _find_loadable_modules(self, path, callback):
         # Load modules in external languages (.py, .idc, ...)
@@ -294,7 +309,7 @@ class LocalPackage(object):
         with open(info_json, 'rb') as _file:
             try:
                 info = json.load(_file)
-            except:
+            except Exception:
                 traceback.print_exc()
                 log.warn('Warning: info.json is not valid at %r', path)
                 return None
@@ -304,7 +319,7 @@ class LocalPackage(object):
         return result
 
     @staticmethod
-    def all():
+    def all(disabled=False):
         """
         List all packages installed at :code:`g['path']['packages']`.
 
@@ -315,7 +330,8 @@ class LocalPackage(object):
         res = os.listdir(prefix)
         res = (x for x in res if os.path.isdir(os.path.join(prefix, x)))
         res = (LocalPackage.by_name(x) for x in res)
-        res = [x for x in res if x]
+        res = (x for x in res if x)
+        res = [x for x in res if (x.id in g['ignored_packages']) == disabled]
         return res
 
     def __repr__(self):
@@ -324,12 +340,13 @@ class LocalPackage(object):
 
 
 class InstallablePackage(object):
-    def __init__(self, id, name, version, description, repo):
+    def __init__(self, id, name, version, description, author, repo):
         self.id = str(id)
         self.name = name
         self.version = str(version)
         self.description = description
         self.repo = repo
+        self.author = author
 
     def install(self, upgrade=False):
         """
@@ -348,11 +365,8 @@ class InstallablePackage(object):
             Run it as separate thread if possible.
         """
 
-        if _visited is None:
-            _visited = {}
-            top_level = True
-        else:
-            top_level = False
+        top_level = _visited is None
+        _visited = _visited or {}
 
         if name in _visited:
             log.warn("Cyclic dependency found when installing %r <-> %r",
@@ -367,23 +381,18 @@ class InstallablePackage(object):
         if allow_upgrade or not satisfies_local:
             log.debug("Fetching releases for %r from %r...", name, repo)
 
-            releases = _download(repo.url + '/releases?name=' +
-                                 urllib2.quote(name)).read()
-            releases = json.loads(releases)
-            if not releases['success']:
+            releases = repo.releases(name)
+            if not releases:
                 error = "Release not found on remote repository: %r on %r (error: %r)" % (
                     name, repo, releases['error'])
                 raise Exception(error)
 
-            releases = [release for release in releases['data']
+            releases = [release for release in releases
                         if Version(release['version']) in _version_spec]
 
             if not releases:
-                error = ""
-                raise Exception()
-
-            # select latest release
-            release = releases[-1]
+                error = "Release satisfying the condition %r %r not found on remote repository %r" % (
+                    name, version_spec, repo)
             downloading = None if (
                 prev and release['version'] == prev.version) else release['version']
         else:
@@ -437,12 +446,16 @@ class InstallablePackage(object):
             pkg.load()
 
         if top_level:
-            log.info("Successfully installed %s", ' '.join('%s-%s' % (key, value[0]) for key, value in _visited.items()))
+            log.info("Successfully installed %s", ' '.join('%s-%s' %
+                                                           (key, value[0]) for key, value in _visited.items()))
 
-            delayed = [(key, value) for key, value in _visited.items() if value[1]]
+            delayed = [(key, value)
+                       for key, value in _visited.items() if value[1]]
             if delayed:
-                log.info("Plugins in the following packages will be loaded after restarting IDA.")
-                log.info("  %s", " ".join('%s-%s' % (key, value[0]) for key, value in delayed))
+                log.info(
+                    "Plugins in the following packages will be loaded after restarting IDA.")
+                log.info("  %s", " ".join('%s-%s' %
+                                          (key, value[0]) for key, value in delayed))
 
         return pkg
 

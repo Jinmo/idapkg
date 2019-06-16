@@ -16,6 +16,7 @@ class Popen(_Popen):
     Subclass of :py:meth:`subprocess.Popen` that
     if stdout is not given, it'll redirect stdout to messages window.
     """
+
     def __init__(self, *args, **kwargs):
         if 'stdout' not in kwargs:
             kwargs['stdout'] = PIPE
@@ -25,36 +26,11 @@ class Popen(_Popen):
             queue = Queue.Queue()
             done = []
 
-            def _receiver():
-                buff = []
-                last_output_time = time.time()
-                while not (done and queue.empty()):
-                    cur_time = time.time()
-                    if last_output_time < cur_time - 0.01:
-                        sys.stdout.write(''.join(buff).replace('\r', ''))
-                        last_output_time = cur_time
-                        buff[:] = []
-                    try:
-                        item = queue.get(timeout=0.01)
-                    except Queue.Empty:
-                        continue
-                    buff.append(item)
-                    queue.task_done()
-                sys.stdout.write(''.join(buff).replace('\r', ''))
-
-            def _reader():
-                while True:
-                    byte = self.stdout.read(1)
-                    if not byte:
-                        done.append(True)
-                        break
-                    queue.put(byte)
-
             # Now launch the process
             super(Popen, self).__init__(*args, **kwargs)
 
-            t_reader = threading.Thread(target=_reader)
-            t_receiver = threading.Thread(target=_receiver)
+            t_reader = threading.Thread(target=Popen._reader, args=(done, queue, ))
+            t_receiver = threading.Thread(target=Popen._receiver, args=(done, queue, ))
 
             t_reader.start()
             t_receiver.start()
@@ -63,6 +39,33 @@ class Popen(_Popen):
         else:
             # No need to do anything
             super(Popen, self).__init__(*args, **kwargs)
+
+    @staticmethod
+    def _receiver(done, queue):
+        buff = []
+        last_output_time = time.time()
+        while not (done and queue.empty()):
+            cur_time = time.time()
+            if last_output_time < cur_time - 0.01:
+                sys.stdout.write(''.join(buff).replace('\r', ''))
+                last_output_time = cur_time
+                buff[:] = []
+            try:
+                item = queue.get(timeout=0.01)
+            except Queue.Empty:
+                continue
+            buff.append(item)
+            queue.task_done()
+        sys.stdout.write(''.join(buff).replace('\r', ''))
+
+    @staticmethod
+    def _reader(done, queue):
+        while True:
+            byte = self.stdout.read(1)
+            if not byte:
+                done.append(True)
+                break
+            queue.put(byte)
 
 
 def system(cmd):

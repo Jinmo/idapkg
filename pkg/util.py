@@ -1,10 +1,9 @@
 import threading
 import ctypes
-import time
 import sys
 import os
 
-import idaapi
+import ida_kernwin
 import PyQt5.QtCore
 import PyQt5.QtWidgets
 
@@ -13,9 +12,9 @@ import PyQt5.QtWidgets
 def register_action(name, shortcut=''):
     def handler(f):
         # 1) Create the handler class
-        class MyHandler(idaapi.action_handler_t):
+        class MyHandler(ida_kernwin.action_handler_t):
             def __init__(self):
-                idaapi.action_handler_t.__init__(self)
+                ida_kernwin.action_handler_t.__init__(self)
 
             # Say hello when invoked.
             def activate(self, ctx):
@@ -25,10 +24,10 @@ def register_action(name, shortcut=''):
 
             # This action is always available.
             def update(self, ctx):
-                return idaapi.AST_ENABLE_ALWAYS
+                return ida_kernwin.AST_ENABLE_ALWAYS
 
         # 2) Describe the action
-        action_desc = idaapi.action_desc_t(
+        action_desc = ida_kernwin.action_desc_t(
             name,  # The action name. This acts like an ID and must be unique
             name,  # The action text.
             MyHandler(),  # The action handler.
@@ -37,7 +36,8 @@ def register_action(name, shortcut=''):
             0)  # Optional: the action icon (shows when in menus/toolbars)
 
         # 3) Register the action
-        idaapi.register_action(action_desc)
+        ida_kernwin.register_action(action_desc)
+        return f
 
     return handler
 
@@ -61,7 +61,7 @@ def rename(old, new):
         if not ctypes.windll.kernel32.MoveFileExA(str(old), str(new), 0):
             raise WindowsError(ctypes.windll.kernel32.GetLastError())
     else:
-        return os.rename()
+        return os.rename(old, new)
 
 
 class Worker(PyQt5.QtCore.QEvent):
