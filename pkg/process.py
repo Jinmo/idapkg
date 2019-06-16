@@ -29,8 +29,8 @@ class Popen(_Popen):
             # Now launch the process
             super(Popen, self).__init__(*args, **kwargs)
 
-            t_reader = threading.Thread(target=Popen._reader, args=(done, queue, ))
-            t_receiver = threading.Thread(target=Popen._receiver, args=(done, queue, ))
+            t_reader = threading.Thread(target=self._reader, args=(done, queue, ))
+            t_receiver = threading.Thread(target=self._receiver, args=(done, queue, ))
 
             t_reader.start()
             t_receiver.start()
@@ -40,8 +40,7 @@ class Popen(_Popen):
             # No need to do anything
             super(Popen, self).__init__(*args, **kwargs)
 
-    @staticmethod
-    def _receiver(done, queue):
+    def _receiver(self, done, queue):
         buff = []
         last_output_time = time.time()
         while not (done and queue.empty()):
@@ -58,8 +57,7 @@ class Popen(_Popen):
             queue.task_done()
         sys.stdout.write(''.join(buff).replace('\r', ''))
 
-    @staticmethod
-    def _reader(done, queue):
+    def _reader(self, done, queue):
         while True:
             byte = self.stdout.read(1)
             if not byte:

@@ -1,4 +1,5 @@
 import httplib
+import traceback
 from Queue import Queue
 from threading import Thread
 from urlparse import urlparse
@@ -9,6 +10,7 @@ SCHEME_MAP = {
 }
 
 MAX_CONCURRENT = 10
+RETRY_COUNT = 3
 CACHED_CONNECTIONS = {}
 
 
@@ -21,14 +23,18 @@ def __do_work(queue, callback, timeout):
             status, url = __fetch(url, timeout)
             callback(status, url)
         except Exception:
+            traceback.print_exc()
             callback(None, url)
         finally:
             queue.task_done()
 
 
-def __fetch(orig_url, timeout):
+def __fetch(orig_url, timeout, retry=RETRY_COUNT):
     url = urlparse(orig_url)
     cls = SCHEME_MAP.get(url.scheme)
+
+    if not retry:
+        raise Exception("Max retries exceeded.")
 
     kwargs = {}
     if timeout is not None:
@@ -40,8 +46,15 @@ def __fetch(orig_url, timeout):
     else:
         conn = cls(url.netloc, **kwargs)
         CACHED_CONNECTIONS[key] = conn
-    conn.request("GET", url.path + '?' + url.query, headers={'Connection': 'Keep-Alive'})
-    res = conn.getresponse()
+    try:
+        conn.request("GET", url.path + '?' + url.query, headers={'Connection': 'Keep-Alive'})
+    except httplib.CannotSendRequest:
+        del CACHED_CONNECTIONS[key]
+        return __fetch(orig_url, timeout, retry)
+    try:
+        res = conn.getresponse()
+    except httplib.ResponseNotReady:
+        return __fetch(orig_url, timeout, retry - 1)
 
     loc = res.getheader("Location", None)
     if res.getheader("Connection", "").lower() == "close":
