@@ -105,7 +105,8 @@ __initial_config = {
         current_os: {
             version_info.str(): [None, None]
         }
-    }
+    },
+    'ignored_packages': []
 }
 
 # Step 1. create configuration
