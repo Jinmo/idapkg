@@ -102,12 +102,14 @@ def init_environment(load=True):
                 ._find_loadable_modules('plugins', ida_loader.load_plugin)
 
     else:
-        log.info("Downloading initial dependencies...")
-        log.info("IDA must be restarted after printing \"Done!\"")
+        # log.info("Downloading initial dependencies...")
+        # log.info("IDA must be restarted after printing \"Done!\"")
 
-        for _dep in _initial_deps:
-            InstallablePackage \
-                .install_from_repo(Repository('https://api.idapkg.com'), _dep)
+        # for _dep in _initial_deps:
+        #     InstallablePackage \
+        #         .install_from_repo(Repository('https://api.idapkg.com'), _dep)
+
+        pass # do not automatically download packages from idapkg.com yet
 
     for pkg in LocalPackage.all():
         pkg.populate_env()
