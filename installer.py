@@ -1,12 +1,12 @@
 import urllib, zipfile, tempfile, sys, os, threading, shutil
 def install():
-    tag='0.1.2'
+    tag='v0.1.2'
 
     n=tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
     n.close()
 
     print 'Started downloading idapkg...'
-    urllib.urlretrieve('https://github.com/Jinmo/idapkg/archive/v%s.zip'%tag, n.name)
+    urllib.urlretrieve('https://github.com/Jinmo/idapkg/archive/%s.zip'%tag, n.name)
 
     f=open(n.name, 'rb+')
     f.seek(0, os.SEEK_END)
