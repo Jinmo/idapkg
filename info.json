@@ -1,6 +1,6 @@
 {
 	"_id": "idapkg",
-	"version": "0.1.2",
+	"version": "0.1.3",
 	"name": "idapkg",
 	"description": "idapkg Core package",
 	"uninstallers": [

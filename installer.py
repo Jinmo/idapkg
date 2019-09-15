@@ -1,6 +1,6 @@
 import urllib, zipfile, tempfile, sys, os, threading, shutil
 def install():
-    tag='v0.1.2'
+    tag='v0.1.3'
 
     n=tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
     n.close()
