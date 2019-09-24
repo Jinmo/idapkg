@@ -72,16 +72,3 @@ class Worker(PyQt5.QtCore.QEvent):
     def __del__(self):
         self.func()
 
-
-def execute_in_main_thread(func):
-    lock = threading.Lock()
-
-    def _handler():
-        lock.acquire()
-        worker = Worker(lambda: (lock.release(), func()))
-        PyQt5.QtCore.QCoreApplication.postEvent(PyQt5.QtWidgets.qApp, worker)
-
-    _handler()
-    PyQt5.QtCore.QCoreApplication.processEvents()
-    lock.acquire()
-    lock.release()

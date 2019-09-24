@@ -15,6 +15,7 @@ import zipfile
 from StringIO import StringIO
 
 import ida_loader
+import ida_kernwin
 from semantic_version import Version, Spec
 
 from . import internal_api
@@ -22,7 +23,7 @@ from .config import g
 from .downloader import _download
 from .env import ea as current_ea, os as current_os
 from .logger import getLogger
-from .util import putenv, execute_in_main_thread, rename
+from .util import putenv, rename
 from .virtualenv_utils import FixInterpreter
 
 ALL_EA = (32, 64)
@@ -217,7 +218,7 @@ class LocalPackage(object):
             if invalidates:
                 internal_api.invalidate_proccache()
 
-        execute_in_main_thread(handler)
+        ida_kernwin.execute_sync(handler, ida_kernwin.MFF_FAST)
 
     def populate_env(self):
         """
