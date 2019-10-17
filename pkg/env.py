@@ -43,7 +43,7 @@ version_info = version_info_cls(0, 0, 0)
 
 
 def __load_ida_native_version():
-    sysdir = _os.path.dirname(_os.path.dirname(idaapi.__file__))
+    sysdir = _os.path.dirname(idaapi.idadir(idaapi.CFG_SUBDIR))
     exe_name = 'ida' if ea == 32 else 'ida64'
     if os == 'win':
         path = _os.path.join(sysdir, exe_name + '.exe')
