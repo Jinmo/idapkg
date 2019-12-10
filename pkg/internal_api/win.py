@@ -1,20 +1,21 @@
-import lief
+from __future__ import print_function
+from .kaitai.microsoft_pe import MicrosoftPe
 from .decoder import decode_lea, RAX
 
 
 def find_idausr_offset(ida_path):
-    ida = lief.parse(ida_path)
-
-    imagebase = ida.optional_header.imagebase
+    ida = MicrosoftPe.from_file(ida_path)
     string = None
 
-    for sect in ida.sections:
+    imagebase = ida.pe.optional_hdr.windows.image_base_64
+
+    for sect in ida.pe.sections:
         if sect.name == '.text':
             text = sect
-            code = str(bytearray(text.content))
+            code = text.body
 
-        value = sect.search('IDAUSR')
-        if value != 0xffffffffffffffff:
+        value = sect.body.find(b'IDAUSR')
+        if value != -1:
             string = sect.virtual_address + imagebase + value
 
     def search(code, addr, offset, size, target):
@@ -22,7 +23,7 @@ def find_idausr_offset(ida_path):
         if visited[offset]:
             return
         while offset <= end:
-            offset = code.find('\x48\x8d', offset)
+            offset = code.find(b'\x48\x8d', offset)
 
             if visited[offset]:
                 break
@@ -30,13 +31,11 @@ def find_idausr_offset(ida_path):
             visited[offset] = True
             insn = decode_lea(addr + offset, memoryview(code)[offset:offset+15])
             if insn and target(insn):
-                print 'Found:',
-                print hex(insn.target),
-                print insn
+                print('Found:', hex(insn.target), insn)
                 return insn
             offset += 1
 
-    def like_yara(delim, target, start=0, end=None):
+    def like_yara(code, delim, target, start=0, end=None):
         global visited
         visited = [None] * len(code)
         cur = code.find(delim, start)
@@ -50,9 +49,9 @@ def find_idausr_offset(ida_path):
                     return res, cur - i
             cur = code.find(delim, cur + 1)
 
-    func = like_yara('\x84\xc0', lambda insn: insn.target == string)[1]
-    ret = like_yara('\xc3', lambda insn: insn.reg == RAX, func, func + 0x10000)[0]
+    func = like_yara(code, b'\x84\xc0', lambda insn: insn.target == string)[1]
+    ret = like_yara(code, b'\xc3', lambda insn: insn.reg == RAX, func, func + 0x10000)[0]
 
     offset = ret.target - imagebase
-    print 'offset:', hex(offset)
+    print('offset:', hex(offset))
     return offset

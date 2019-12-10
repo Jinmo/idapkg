@@ -1,12 +1,12 @@
-import urllib, zipfile, tempfile, sys, os, threading, shutil
+import zipfile, tempfile, sys, os, threading, shutil, importlib
 def install():
     tag='v0.1.3'
 
     n=tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
     n.close()
 
-    print 'Started downloading idapkg...'
-    urllib.urlretrieve('https://github.com/Jinmo/idapkg/archive/%s.zip'%tag, n.name)
+    print('Started downloading idapkg...')
+    importlib.import_module('urllib.request' if sys.version_info.major == 3 else 'urllib').urlretrieve('https://github.com/Jinmo/idapkg/archive/%s.zip'%tag, n.name)
 
     f=open(n.name, 'rb+')
     f.seek(0, os.SEEK_END)
@@ -33,7 +33,7 @@ def install():
     main.update_pythonrc()
     main.init_environment(False)
 
-    print 'Installation success! Please restart IDA to use idapkg.'
+    print('Installation success! Please restart IDA to use idapkg.')
     os.unlink(n.name)
 
 threading.Thread(target=install).start()

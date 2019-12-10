@@ -2,6 +2,7 @@
 import ctypes
 import os
 import traceback
+import collections
 
 import idaapi
 
@@ -85,6 +86,9 @@ def get_extlangs():
     functype = functype(ctypes.c_size_t, (ctypes.c_void_p),
                         ctypes.POINTER(_extlang_t))
 
+    extlang_t = collections.namedtuple(
+        'extlang_t', 'size flags refcnt name fileext highlighter')
+
     class _extlang_visitor_t(ctypes.Structure):
         _fields_ = [
             ('vtable', ctypes.POINTER(functype))
@@ -95,12 +99,12 @@ def get_extlangs():
     @functype
     def _visitor_func(_this, extlang):
         extlang = extlang[0]
-        new_extlang = _extlang_t(
+        new_extlang = extlang_t(
             extlang.size,
             extlang.flags,
             extlang.refcnt,
-            str(extlang.name),
-            str(extlang.fileext),
+            extlang.name.decode('utf8'),
+            extlang.fileext.decode('utf8'),
             None  # not supported
         )
         res.append(new_extlang)
@@ -156,13 +160,6 @@ def invalidate_idausr():
         path = _ida_lib_path(current_ea)
 
         try:
-            import lief as _
-        except ImportError:
-            log.info(
-                'Installing dependencies for analyzing IDAUSR offsets...')
-            system('pip install lief')
-
-        try:
             log.info('Loading offsets from IDA binary... (takes a while)')
             if current_os == 'win':
                 from .win import find_idausr_offset
@@ -176,7 +173,8 @@ def invalidate_idausr():
             traceback.print_exc()
 
         if offset is None:
-            log.info("Loading processors/loaders requires restarting in this platform.")
+            log.info(
+                "Loading processors/loaders requires restarting in this platform.")
             cfg[current_ea == 64] = False
             __possible_to_invalidate = False
             return False

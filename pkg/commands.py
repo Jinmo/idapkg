@@ -7,7 +7,7 @@ from .util import __work
 from .config import g
 
 import re
-import semantic_version
+from .vendor import semantic_version
 
 __all__ = []
 

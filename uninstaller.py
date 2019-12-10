@@ -4,13 +4,13 @@ import ida_diskio
 from pkg import __version__
 from pkg.main import RC
 
-SEP = '\n# idapkg version: ', '# idapkg end\n'
+SEP = b'\n# idapkg version: ', b'# idapkg end\n'
 
 
 def update_pythonrc():
     rcpath = os.path.join(ida_diskio.get_user_idadir(), "idapythonrc.py")
     sep_with_ver = SEP[0] + __version__
-    payload = '%s\n%s\n%s' % (sep_with_ver, RC.strip(), SEP[1])
+    payload = b'%s\n%s\n%s' % (sep_with_ver, RC.strip(), SEP[1])
     if os.path.isfile(rcpath):
         with open(rcpath, 'rb') as f:
             py = f.read()

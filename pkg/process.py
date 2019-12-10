@@ -1,14 +1,19 @@
 """
 Both method redirects stdout to IDA Pro's console.
 """
+from __future__ import print_function
 
-import Queue
 import sys
 import threading
 import time
 
 from subprocess import Popen as _Popen, PIPE, STDOUT
 from PyQt5.QtCore import QCoreApplication
+
+if sys.version_info.major == 3:
+    import queue as Queue
+else:
+    import Queue
 
 
 class Popen(_Popen):
@@ -29,8 +34,10 @@ class Popen(_Popen):
             # Now launch the process
             super(Popen, self).__init__(*args, **kwargs)
 
-            t_reader = threading.Thread(target=self._reader, args=(done, queue, ))
-            t_receiver = threading.Thread(target=self._receiver, args=(done, queue, ))
+            t_reader = threading.Thread(
+                target=self._reader, args=(done, queue, ))
+            t_receiver = threading.Thread(
+                target=self._receiver, args=(done, queue, ))
 
             t_reader.start()
             t_receiver.start()
@@ -87,4 +94,4 @@ def system(cmd):
 
 
 if __name__ == '__main__':
-    print system('pip install requests')
+    print(system('pip install requests'))

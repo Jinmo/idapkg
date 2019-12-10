@@ -1,6 +1,7 @@
 import os
 import sys
 import subprocess
+import runpy
 
 from .config import g
 from .util import __work
@@ -49,7 +50,7 @@ class FixInterpreter(object):
 
 def _install_virtualenv(path):
     from hashlib import sha256
-    from downloader import _download
+    from .downloader import _download
 
     log.info('Downloading virtualenv from %r ...', VIRTUALENV_URL)
     data = _download(VIRTUALENV_URL).read()
@@ -85,7 +86,7 @@ def prepare_virtualenv(path=None, callback=None, wait=False):
         if not os.path.isfile(activator_path):
             raise ImportError()
         
-        execfile(activator_path, {'__file__': activator_path})
+        runpy.run_path(activator_path)
         callback and callback()
     except ImportError:
         tasks = [

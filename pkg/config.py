@@ -21,6 +21,7 @@ This module generates and manages config data. Initial config is like this:
     :code:`g['path']['packages'] == idapkg_dir('python')` initially.
 
 """
+from __future__ import print_function
 
 import os
 import sys
@@ -28,11 +29,12 @@ import json
 import copy
 
 from .env import os as current_os, version_info
+from .compat import basestring
 
 try:
     import idaapi as _
 except ImportError:
-    print "You're running package manager not in IDA Pro. Some functionalities will be limited."
+    print("You're running package manager not in IDA Pro. Some functionalities will be limited.")
 
 
 def basedir():
@@ -51,11 +53,11 @@ def _idapkg_dir(*suffixes):
 
 
 def _load_config():
-    return json.load(open(config_path(), 'rb'))
+    return json.load(open(config_path(), 'r'))
 
 
 def _save_config(data):
-    with open(config_path(), 'wb') as config_file:
+    with open(config_path(), 'w') as config_file:
         json.dump(data, config_file, indent=4)
 
 
@@ -84,8 +86,8 @@ def _fix_missing_config(obj, reference, path=None):
             if type_tar != type_ref:
                 changed = True
                 obj[key] = copy.deepcopy(value)
-                print 'Type is different (%r): %r (saved) vs %r, replacing with initial value %r' \
-                    % ('/'.join(path), type_tar, type_ref, value)
+                print('Type is different (%r): %r (saved) vs %r, replacing with initial value %r' \
+                    % ('/'.join(path), type_tar, type_ref, value))
         if isinstance(obj[key], dict):
             changed_, obj[key] = _fix_missing_config(obj[key], value, path + [key])
             changed = changed or changed_
@@ -117,7 +119,7 @@ try:
         _save_config(g)
 except (IOError, ValueError):
     # save initial config
-    print 'Generating initial config at', config_path()
+    print('Generating initial config at', config_path())
     g = copy.deepcopy(__initial_config)
     _save_config(__initial_config)
 

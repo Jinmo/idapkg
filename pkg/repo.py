@@ -1,17 +1,21 @@
+from __future__ import print_function
 import json
 import traceback
-import urllib
-from StringIO import StringIO
+import sys
 from multiprocessing.pool import ThreadPool
 
 from .package import InstallablePackage, LocalPackage
 from .config import g
 from .downloader import _download, MAX_CONCURRENT
 from .logger import getLogger
+from .compat import quote
 
 TIMEOUT = 8
 log = getLogger(__name__)
 
+
+if sys.version_info.major == 3:
+    basestring = str
 
 class Repository(object):
     """
@@ -39,7 +43,7 @@ class Repository(object):
         """
         endpoint = '/info'
         res = _download(self.url + endpoint + '?id=' +
-                        urllib.quote(name), self.timeout)
+                        quote(name), self.timeout)
         if not res:  # Network Error
             return
         else:
@@ -54,7 +58,7 @@ class Repository(object):
     def readme(self, name):
         endpoint = '/info'
         res = _download(self.url + endpoint + '?id=' +
-                        urllib.quote(name), self.timeout)
+                        quote(name), self.timeout)
         if not res:  # Network Error
             return
         else:
@@ -87,16 +91,14 @@ class Repository(object):
                 for item in res['data'] if LocalPackage.by_name(item['id']) is None
             ]
         except ValueError:
-            string_io = StringIO()
-            traceback.print_exc(file=string_io)
             log.error('Error fetching repo: %r\n%s',
-                      self.url, string_io.getvalue())
+                      self.url, traceback.format_exc())
 
     def releases(self, name):
         """
         Fetch a list of releases of specified package.
         """
-        endpoint = '/releases?name=' + urllib.quote(name)
+        endpoint = '/releases?name=' + quote(name)
         res = _download(self.url + endpoint)
 
         if res is None:
@@ -110,7 +112,7 @@ class Repository(object):
                 return None
             else:
                 return releases['data']
-        except KeyError, ValueError:
+        except (KeyError, ValueError):
             return None
 
     @staticmethod
@@ -145,4 +147,4 @@ def get_online_packages(repos=None):
 
 
 if __name__ == '__main__':
-    print '\n'.join(map(repr, get_online_packages()))
+    print('\n'.join(map(repr, get_online_packages())))

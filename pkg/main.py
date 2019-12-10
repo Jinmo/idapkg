@@ -11,7 +11,7 @@ from . import __version__
 
 log = getLogger(__name__)
 
-RC = """
+RC = b"""
 _idapkg_basedir = os.path.expanduser(os.path.join('~', 'idapkg'))
 
 def init_idapkg(basedir):
@@ -21,9 +21,9 @@ def init_idapkg(basedir):
     import json
 
     def usage():
-        print "idapkg is not installed or corrupted."
-        print "please use the installation script below:"
-        print "https://github.com/Jinmo/idapkg"
+        print("idapkg is not installed or corrupted.")
+        print("please use the installation script below:")
+        print("https://github.com/Jinmo/idapkg")
 
     config = os.path.join(basedir, 'config.json')
 
@@ -52,13 +52,13 @@ init_idapkg(_idapkg_basedir)
 del init_idapkg, _idapkg_basedir
 """
 
-SEP = '\n# idapkg version: ', '# idapkg end\n'
+SEP = b'\n# idapkg version: ', b'# idapkg end\n'
 
 
 def update_pythonrc():
     rcpath = os.path.join(ida_diskio.get_user_idadir(), "idapythonrc.py")
-    sep_with_ver = SEP[0] + __version__
-    payload = '%s\n%s\n%s' % (sep_with_ver, RC.strip(), SEP[1])
+    sep_with_ver = SEP[0] + __version__.encode()
+    payload = b'%s\n%s\n%s' % (sep_with_ver, RC.strip(), SEP[1])
     if os.path.isfile(rcpath):
         with open(rcpath, 'rb') as f:
             py = f.read()
@@ -69,10 +69,10 @@ def update_pythonrc():
                 py = py.split(SEP[0], 1)
                 py = py[0] + py[1].split(SEP[1], 1)[1]
             py = payload + py
-            print('Updating idapkg into idapythonrc.py.')
+            log.info('Updating idapkg into idapythonrc.py.')
     else:
         py = payload
-        print('Added idapkg into idapythonrc.py. Will work after restarting!')
+        log.info('Added idapkg into idapythonrc.py. Will work after restarting!')
 
     with open(rcpath, 'wb') as f:
         f.write(py)

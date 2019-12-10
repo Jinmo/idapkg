@@ -10,13 +10,11 @@ import shutil
 import sys
 import threading
 import traceback
-import urllib2
 import zipfile
-from StringIO import StringIO
 
 import ida_loader
 import ida_kernwin
-from semantic_version import Version, Spec
+from .vendor.semantic_version import Version, Spec
 
 from . import internal_api
 from .config import g
@@ -25,6 +23,7 @@ from .env import ea as current_ea, os as current_os
 from .logger import getLogger
 from .util import putenv, rename
 from .virtualenv_utils import FixInterpreter
+from .compat import quote
 
 ALL_EA = (32, 64)
 __all__ = ["LocalPackage", "InstallablePackage"]
@@ -395,15 +394,16 @@ class InstallablePackage(object):
                 error = "Release satisfying the condition %r %r not found on remote repository %r" % (
                     name, version_spec, repo)
             downloading = None if (
-                prev and release['version'] == prev.version) else release['version']
+                prev and releases[-1]['version'] == prev.version) else releases[-1]['version']
         else:
             downloading = None
 
         if downloading:
             log.info('Collecting %s...', name)
             data = _download(repo.url + '/download?spec=' +
-                             urllib2.quote(name) + '==' + urllib2.quote(downloading)).read()
-            io = StringIO(data)
+                             quote(name) + '==' + quote(downloading),
+                             to_file=True)
+            io = data
             f = zipfile.ZipFile(io, 'r')
 
             info = json.load(f.open('info.json'))

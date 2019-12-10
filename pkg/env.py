@@ -49,10 +49,10 @@ def __load_ida_native_version():
         path = _os.path.join(sysdir, exe_name + '.exe')
         with open(path, 'rb') as f:
             data = f.read()
-            needle = 'F\0i\0l\0e\0V\0e\0r\0s\0i\0o\0n\0\0\0\0\0'
+            needle = b'F\0i\0l\0e\0V\0e\0r\0s\0i\0o\0n\0\0\0\0\0'
             offset = data.rfind(needle) + len(needle)
-            offset2 = data.find('\0\0', offset) + 1
-            version_str = data[offset:offset2].decode('utf16').encode('utf8')
+            offset2 = data.find(b'\0\0', offset) + 1
+            version_str = data[offset:offset2].decode('utf16')
 
             version_str = version_str[:version_str.rfind(
                 '.')] + version_str[version_str.rfind('.') + 1:]
@@ -60,13 +60,13 @@ def __load_ida_native_version():
         path = _os.path.join(sysdir, exe_name)
         with open(path, 'rb') as f:
             data = f.read()
-            needle = '<key>CFBundleShortVersionString</key>'
+            needle = b'<key>CFBundleShortVersionString</key>'
             offset = data.rfind(needle)
-            offset = data.find('<string>', offset) + 8
-            offset2 = data.find('</string', offset)
-            version_str = data[offset:offset2]
+            offset = data.find(b'<string>', offset) + 8
+            offset2 = data.find(b'</string', offset)
+            version_str = data[offset:offset2].decode('utf8')
 
-    result = version_info_cls._make(map(int, version_str.split('.')))
+    result = version_info_cls._make(int(_) for _ in version_str.split('.'))
     return result
 
 

@@ -1,4 +1,11 @@
 import struct
+import sys
+
+if sys.version_info.major == 3:
+    def to_byte(x):
+        return x
+else:
+    to_byte = ord
 
 # Register constants
 RAX = 0
@@ -16,7 +23,7 @@ class Instruction(object):
 
 
 def decode_lea(address, bytes):
-    rm = ord(bytes[2])
+    rm = to_byte(bytes[2])
     # PC/RIP-relative addressing
     if rm & 0x7 == 0b101 and (rm >> 6) == 0:
         return Instruction(
