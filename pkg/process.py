@@ -53,7 +53,7 @@ class Popen(_Popen):
         while not (done and queue.empty()):
             cur_time = time.time()
             if last_output_time < cur_time - 0.01:
-                sys.stdout.write(''.join(buff).replace('\r', ''))
+                sys.stdout.write(b''.join(buff).replace(b'\r', b''))
                 last_output_time = cur_time
                 buff[:] = []
             try:
@@ -62,7 +62,7 @@ class Popen(_Popen):
                 continue
             buff.append(item)
             queue.task_done()
-        sys.stdout.write(''.join(buff).replace('\r', ''))
+        sys.stdout.write(b''.join(buff).replace(b'\r', b''))
 
     def _reader(self, done, queue):
         while True:

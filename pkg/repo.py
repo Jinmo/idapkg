@@ -8,14 +8,11 @@ from .package import InstallablePackage, LocalPackage
 from .config import g
 from .downloader import _download, MAX_CONCURRENT
 from .logger import getLogger
-from .compat import quote
+from .compat import quote, basestring
 
 TIMEOUT = 8
 log = getLogger(__name__)
 
-
-if sys.version_info.major == 3:
-    basestring = str
 
 class Repository(object):
     """

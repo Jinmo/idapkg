@@ -4,7 +4,9 @@ import tempfile
 import shutil
 from threading import Thread
 
-from .compat import Queue, HTTPSConnection, HTTPConnection, urlparse
+from .compat import (
+    Queue, HTTPSConnection, HTTPConnection, urlparse,
+    CannotSendRequest, ResponseNotReady)
 
 SCHEME_MAP = {
     'https': HTTPSConnection,
