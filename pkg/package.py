@@ -11,6 +11,7 @@ import sys
 import threading
 import traceback
 import zipfile
+import runpy
 
 import ida_loader
 import ida_kernwin
@@ -105,7 +106,7 @@ class LocalPackage(object):
             for script in self.metadata().get('uninstallers', []):
                 script = os.path.join(self.path, script)
                 try:
-                    execfile(script, {__file__: script})
+                    runpy.run_path(script)
                 except Exception:
                     # XXX: How can I rollback this?
                     traceback.print_exc()
@@ -161,9 +162,7 @@ class LocalPackage(object):
                 for script in scripts:
                     log.info('Executing installer path %r...', script)
                     script = os.path.join(self.path, script)
-                    execfile(script, {
-                        __file__: script
-                    })
+                    runpy.run_path(script)
         except Exception:
             log.info('Installer failed!')
             if remove_on_fail:
