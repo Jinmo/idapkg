@@ -6,7 +6,7 @@ from threading import Thread
 
 from .compat import (
     Queue, HTTPSConnection, HTTPConnection, urlparse,
-    CannotSendRequest, ResponseNotReady)
+    CannotSendRequest, ResponseNotReady, RemoteDisconnected)
 
 SCHEME_MAP = {
     'https': HTTPSConnection,
@@ -53,12 +53,13 @@ def __fetch(orig_url, timeout, retry=RETRY_COUNT):
     try:
         conn.request("GET", url.path + '?' + url.query,
                      headers={'Connection': 'Keep-Alive'})
-    except CannotSendRequest:
+    except CannotSendRequest: # Keep-alive expired
         del CACHED_CONNECTIONS[key]
         return __fetch(orig_url, timeout, retry)
     try:
         res = conn.getresponse()
-    except ResponseNotReady:
+    except (ResponseNotReady, RemoteDisconnected):
+        # RemoteDisconnected is also for keep-alive, but it's safe to decrement retry count
         return __fetch(orig_url, timeout, retry - 1)
 
     loc = res.getheader("Location", None)
