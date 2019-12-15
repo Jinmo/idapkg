@@ -1,39 +1,29 @@
-import traceback
-import sys
-import tempfile
+"""
+HTTP downloader as minimal as possible.
+I'm not sure if its codebase is minimal enough.
+"""
+
 import shutil
-from threading import Thread
+import tempfile
 
 from .compat import (
-    Queue, HTTPSConnection, HTTPConnection, urlparse,
+    HTTPSConnection, HTTPConnection, urlparse,
     CannotSendRequest, ResponseNotReady, RemoteDisconnected)
 
+# Supported protocols
 SCHEME_MAP = {
     'https': HTTPSConnection,
     'http': HTTPConnection
 }
 
-MAX_CONCURRENT = 10
+# Default value of max retry count for one fetch
 RETRY_COUNT = 3
+
+# Keep-alive connections
 CACHED_CONNECTIONS = {}
 
 
-def __do_work(queue, callback, timeout):
-    while not queue.empty():
-        url = queue.get()
-        if url is None:
-            break
-        try:
-            status, url = __fetch(url, timeout)
-            callback(status, url)
-        except Exception:
-            traceback.print_exc()
-            callback(None, url)
-        finally:
-            queue.task_done()
-
-
-def __fetch(orig_url, timeout, retry=RETRY_COUNT):
+def _fetch(orig_url, timeout, retry=RETRY_COUNT):
     url = urlparse(orig_url)
     cls = SCHEME_MAP.get(url.scheme)
 
@@ -51,55 +41,42 @@ def __fetch(orig_url, timeout, retry=RETRY_COUNT):
         conn = cls(url.netloc, **kwargs)
         CACHED_CONNECTIONS[key] = conn
     try:
-        conn.request("GET", url.path + '?' + url.query,
-                     headers={'Connection': 'Keep-Alive'})
-    except CannotSendRequest: # Keep-alive expired
+        conn.request(
+            "GET",
+            ''.join((url.path or '/', '?' + url.query if url.query else '')),
+            headers={'Connection': 'Keep-Alive'})
+    except (CannotSendRequest, OSError):  # Keep-alive expired
         del CACHED_CONNECTIONS[key]
-        return __fetch(orig_url, timeout, retry)
+        return _fetch(orig_url, timeout, retry)
     try:
         res = conn.getresponse()
     except (ResponseNotReady, RemoteDisconnected):
-        # RemoteDisconnected is also for keep-alive, but it's safe to decrement retry count
-        return __fetch(orig_url, timeout, retry - 1)
+        # RemoteDisconnected is also triggered when keep-alive is disconnected
+        # However it's safe to decrement retry count
+        return _fetch(orig_url, timeout, retry - 1)
 
     loc = res.getheader("Location", None)
     if res.getheader("Connection", "").lower() == "close":
         del CACHED_CONNECTIONS[key]
 
     if res.status // 100 == 3 and loc:
-        return __fetch(loc, timeout)
+        return _fetch(loc, timeout)
 
-    return res, orig_url
-
-
-def _download_multi(urls, cb, timeout=None):
-    concurrent = min(len(urls), MAX_CONCURRENT)
-    q = Queue(concurrent)
-
-    for url in urls:
-        q.put(url)
-
-    for _ in range(concurrent):
-        __do_work(q, cb, timeout)
+    return res
 
 
-def _download(url, timeout=None, to_file=False):
-    results = [None]
+def download(url, timeout=None, to_file=False):
+    res = _fetch(url, timeout)
 
-    def set_res(res, _url):
-        results[0] = res
-
-    _download_multi([url], set_res, timeout)
-
+    # Some interfaces like ZipFile need some additional methods.
     if to_file:
-        # Some interfaces like ZipFile need some additional methods.
-
         out_file = tempfile.TemporaryFile()
-        shutil.copyfileobj(results[0], out_file)
+        shutil.copyfileobj(res, out_file)
+        out_file.seek(0)
         return out_file
     else:
-        return results[0]
+        return res
 
 
 if __name__ == '__main__':
-    print(_download('https://idapkg.com'))
+    print(repr(download('http://idapkg.com', to_file=True).read()))

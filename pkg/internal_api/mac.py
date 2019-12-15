@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 from .decoder import decode_lea, RDI
 from .kaitai.mach_o import MachO
 
@@ -30,7 +31,7 @@ def find_idausr_offset(ida_path):
                 break
 
             visited[offset] = True
-            insn = decode_lea(addr + offset, memoryview(code)[offset:offset+15])
+            insn = decode_lea(addr + offset, memoryview(code)[offset:offset + 15])
             if insn and target(insn):
                 print('Found:', hex(insn.target), insn)
                 return insn
@@ -48,7 +49,6 @@ def find_idausr_offset(ida_path):
                 if res:
                     return res, cur - i
             cur = code.find(delim, cur + 1)
-
 
     func = like_yara(code, b'\x48\x8d\x3d', lambda insn: insn.target == string)
     ret = like_yara(code, b'\xe8', lambda insn: insn.reg == RDI and insn.address != func[0].address, func[1],

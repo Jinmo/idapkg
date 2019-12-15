@@ -1,12 +1,12 @@
 """
 Some console-friendly methods are exposed in pkg.*, and defined at pkg.commands.
 """
+import re
+
+from .config import g
 from .package import InstallablePackage, LocalPackage
 from .repo import Repository
 from .util import __work
-from .config import g
-
-import re
 from .vendor import semantic_version
 
 __all__ = []

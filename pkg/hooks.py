@@ -1,8 +1,9 @@
 import os
-import ida_kernwin
-import pkg.util
 
+import ida_kernwin
 from PyQt5.QtCore import QCoreApplication, QProcess
+
+from .util import putenv
 
 _HOOKS = []
 
@@ -13,16 +14,17 @@ class IdausrTemporarySetter(object):
 
     def __enter__(self):
         self.backups.append(os.getenv('IDAUSR', ''))
-        pkg.util.putenv('IDAUSR', self.original)
+        putenv('IDAUSR', self.original)
 
     def __exit__(self, *_):
-        pkg.util.putenv('IDAUSR', self.backups.pop())
+        putenv('IDAUSR', self.backups.pop())
 
 
 def hook(name, label, before=None):
     def _decorator(func):
         _HOOKS.append((name, label, func, before))
         return func
+
     return _decorator
 
 

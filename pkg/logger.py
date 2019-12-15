@@ -1,7 +1,9 @@
 """
 Logging module
 """
-import logging, sys
+import logging
+import sys
+
 
 def getLogger(name):
     """

@@ -6,25 +6,25 @@ import glob
 import json
 import os
 import random
+import runpy
 import shutil
 import sys
 import threading
 import traceback
 import zipfile
-import runpy
 
-import ida_loader
 import ida_kernwin
-from .vendor.semantic_version import Version, Spec
+import ida_loader
 
 from . import internal_api
+from .compat import quote
 from .config import g
-from .downloader import _download
+from .downloader import download
 from .env import ea as current_ea, os as current_os
 from .logger import getLogger
 from .util import putenv, rename
+from .vendor.semantic_version import Version, Spec
 from .virtualenv_utils import FixInterpreter
-from .compat import quote
 
 ALL_EA = (32, 64)
 __all__ = ["LocalPackage", "InstallablePackage"]
@@ -157,7 +157,7 @@ class LocalPackage(object):
             scripts = info.get('installers', [])
             if not isinstance(scripts, list):
                 raise Exception(
-                    '%r Corrupted package: installers key is not list')
+                    '%r: Corrupted package: installers key is not list' % self.id)
             with FixInterpreter():
                 for script in scripts:
                     log.info('Executing installer path %r...', script)
@@ -253,16 +253,16 @@ class LocalPackage(object):
         self._find_loadable_modules(category, result.append)
         return result
 
-    def _find_loadable_modules(self, path, callback):
+    def _find_loadable_modules(self, subdir, callback):
         # Load modules in external languages (.py, .idc, ...)
         for suffix in ['.' + x.fileext for x in internal_api.get_extlangs()]:
-            expr = os.path.join(self.path, path, '*' + suffix)
+            expr = os.path.join(self.path, subdir, '*' + suffix)
             for path in glob.glob(expr):
                 callback(str(path))
 
         # Load native modules
         for suffix in (_get_native_suffix(),):
-            expr = os.path.join(self.path, path, '*' + suffix)
+            expr = os.path.join(self.path, subdir, '*' + suffix)
             for path in glob.glob(expr):
                 is64 = path[:-len(suffix)][-2:] == '64'
 
@@ -392,16 +392,17 @@ class InstallablePackage(object):
             if not releases:
                 error = "Release satisfying the condition %r %r not found on remote repository %r" % (
                     name, version_spec, repo)
+                raise Exception(Error)
             downloading = None if (
-                prev and releases[-1]['version'] == prev.version) else releases[-1]['version']
+                    prev and releases[-1]['version'] == prev.version) else releases[-1]['version']
         else:
             downloading = None
 
         if downloading:
             log.info('Collecting %s...', name)
-            data = _download(repo.url + '/download?spec=' +
-                             quote(name) + '==' + quote(downloading),
-                             to_file=True)
+            data = download(repo.url + '/download?spec=' +
+                            quote(name) + '==' + quote(downloading),
+                            to_file=True)
             io = data
             f = zipfile.ZipFile(io, 'r')
 

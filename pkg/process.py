@@ -6,8 +6,8 @@ from __future__ import print_function
 import sys
 import threading
 import time
-
 from subprocess import Popen as _Popen, PIPE, STDOUT
+
 from PyQt5.QtCore import QCoreApplication
 
 if sys.version_info.major == 3:
@@ -35,9 +35,9 @@ class Popen(_Popen):
             super(Popen, self).__init__(*args, **kwargs)
 
             t_reader = threading.Thread(
-                target=self._reader, args=(done, queue, ))
+                target=self._reader, args=(done, queue,))
             t_receiver = threading.Thread(
-                target=self._receiver, args=(done, queue, ))
+                target=self._receiver, args=(done, queue,))
 
             t_reader.start()
             t_receiver.start()

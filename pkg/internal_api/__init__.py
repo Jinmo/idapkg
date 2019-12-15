@@ -1,15 +1,14 @@
 # pylint: disable=invalid-name,protected-access
+import collections
 import ctypes
 import os
 import traceback
-import collections
 
 import idaapi
 
 from ..config import g, _save_config
 from ..env import ea as current_ea, os as current_os, version_info
 from ..logger import getLogger
-from ..process import system
 
 IDADIR = idaapi.idadir('')
 log = getLogger(__name__)

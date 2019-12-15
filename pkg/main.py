@@ -1,12 +1,11 @@
 import os
 
-import ida_loader
 import ida_diskio
+import ida_loader
 
-from pkg.logger import getLogger
-from pkg.package import LocalPackage, InstallablePackage
-from pkg.repo import Repository
-from pkg.virtualenv_utils import prepare_virtualenv
+from .logger import getLogger
+from .package import LocalPackage
+from .virtualenv_utils import prepare_virtualenv
 from . import __version__
 
 log = getLogger(__name__)
@@ -109,16 +108,14 @@ def init_environment(load=True):
         #     InstallablePackage \
         #         .install_from_repo(Repository('https://api.idapkg.com'), _dep)
 
-        pass # do not automatically download packages from idapkg.com yet
+        pass  # do not automatically download packages from idapkg.com yet
 
     for pkg in LocalPackage.all():
         pkg.populate_env()
 
-    import pkg.actions
-    import pkg.hooks
+    from . import actions, hooks
 
-    pkg.hooks.init_hooks(_original_idausr)
+    hooks.init_hooks(_original_idausr)
 
     from pkg.internal_api import invalidate_idausr
     invalidate_idausr()
-

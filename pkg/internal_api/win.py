@@ -1,6 +1,7 @@
 from __future__ import print_function
-from .kaitai.microsoft_pe import MicrosoftPe
+
 from .decoder import decode_lea, RAX
+from .kaitai.microsoft_pe import MicrosoftPe
 
 
 def find_idausr_offset(ida_path):
@@ -29,7 +30,7 @@ def find_idausr_offset(ida_path):
                 break
 
             visited[offset] = True
-            insn = decode_lea(addr + offset, memoryview(code)[offset:offset+15])
+            insn = decode_lea(addr + offset, memoryview(code)[offset:offset + 15])
             if insn and target(insn):
                 print('Found:', hex(insn.target), insn)
                 return insn

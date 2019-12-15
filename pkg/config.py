@@ -23,13 +23,13 @@ This module generates and manages config data. Initial config is like this:
 """
 from __future__ import print_function
 
+import copy
+import json
 import os
 import sys
-import json
-import copy
 
-from .env import os as current_os, version_info
 from .compat import basestring
+from .env import os as current_os, version_info
 
 try:
     import idaapi as _
@@ -87,7 +87,7 @@ def _fix_missing_config(obj, reference, path=None):
                 changed = True
                 obj[key] = copy.deepcopy(value)
                 print('Type is different (%r): %r (saved) vs %r, replacing with initial value %r' \
-                    % ('/'.join(path), type_tar, type_ref, value))
+                      % ('/'.join(path), type_tar, type_ref, value))
         if isinstance(obj[key], dict):
             changed_, obj[key] = _fix_missing_config(obj[key], value, path + [key])
             changed = changed or changed_

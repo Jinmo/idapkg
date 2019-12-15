@@ -1,16 +1,21 @@
 from __future__ import print_function
+
 import json
 import traceback
-import sys
 from multiprocessing.pool import ThreadPool
 
-from .package import InstallablePackage, LocalPackage
-from .config import g
-from .downloader import _download, MAX_CONCURRENT
-from .logger import getLogger
 from .compat import quote, basestring
+from .config import g
+from .downloader import download
+from .logger import getLogger
+from .package import InstallablePackage, LocalPackage
 
+# Connection timeout
 TIMEOUT = 8
+
+# Max concurrent when fetching multiple repository
+MAX_CONCURRENT = 10
+
 log = getLogger(__name__)
 
 
@@ -39,8 +44,8 @@ class Repository(object):
         :rtype: pkg.package.InstallablePackage or None
         """
         endpoint = '/info'
-        res = _download(self.url + endpoint + '?id=' +
-                        quote(name), self.timeout)
+        res = download(self.url + endpoint + '?id=' +
+                       quote(name), self.timeout)
         if not res:  # Network Error
             return
         else:
@@ -50,12 +55,13 @@ class Repository(object):
             else:
                 item = res['data']
                 return InstallablePackage(
-                    name=item['name'], id=item['id'], version=item['version'], description=item['description'], author=item['author'], repo=self)
+                    name=item['name'], id=item['id'], version=item['version'], description=item['description'],
+                    author=item['author'], repo=self)
 
     def readme(self, name):
         endpoint = '/info'
-        res = _download(self.url + endpoint + '?id=' +
-                        quote(name), self.timeout)
+        res = download(self.url + endpoint + '?id=' +
+                       quote(name), self.timeout)
         if not res:  # Network Error
             return
         else:
@@ -73,7 +79,7 @@ class Repository(object):
         :rtype: list(pkg.package.InstallablePackage)
         """
         endpoint = '/search'
-        res = _download(self.url + endpoint, self.timeout)
+        res = download(self.url + endpoint, self.timeout)
         try:
             if res is None:
                 raise Exception('connection error')
@@ -84,7 +90,8 @@ class Repository(object):
             # Only list non-installed packages
             return [
                 InstallablePackage(
-                    name=item['name'], id=item['id'], version=item['version'], description=item['description'], author=item['author'], repo=self)
+                    name=item['name'], id=item['id'], version=item['version'], description=item['description'],
+                    author=item['author'], repo=self)
                 for item in res['data'] if LocalPackage.by_name(item['id']) is None
             ]
         except ValueError:
@@ -96,7 +103,7 @@ class Repository(object):
         Fetch a list of releases of specified package.
         """
         endpoint = '/releases?name=' + quote(name)
-        res = _download(self.url + endpoint)
+        res = download(self.url + endpoint)
 
         if res is None:
             return None

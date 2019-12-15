@@ -1,16 +1,16 @@
 import os
-import sys
-import subprocess
 import runpy
+import subprocess
+import sys
 
 from .config import g
-from .util import __work
 from .logger import getLogger
 from .process import Popen, system
+from .util import __work
 
 # extracted from https://pypi.org/simple/virtualenv/
-VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/4f/ba/6f9315180501d5ac3e707f19fcb1764c26cc6a9a31af05778f7c2383eadb/virtualenv-16.5.0-py2.py3-none-any.whl'
-HASH = 'bfc98bb9b42a3029ee41b96dc00a34c2f254cbf7716bec824477b2c82741a5c4'
+VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/62/77/6a86ef945ad39aae34aed4cc1ae4a2f941b9870917a974ed7c5b6f137188/virtualenv-16.7.8-py2.py3-none-any.whl'
+HASH = 'b57776b44f91511866594e477dd10e76a6eb44439cdd7f06dcd30ba4c5bd854f'
 
 log = getLogger(__name__)
 
@@ -50,10 +50,10 @@ class FixInterpreter(object):
 
 def _install_virtualenv(path):
     from hashlib import sha256
-    from .downloader import _download
+    from .downloader import download
 
     log.info('Downloading virtualenv from %r ...', VIRTUALENV_URL)
-    data = _download(VIRTUALENV_URL).read()
+    data = download(VIRTUALENV_URL).read()
     assert sha256(data).hexdigest() == HASH, 'hash error... MITM?'
 
     import tempfile
@@ -85,7 +85,7 @@ def prepare_virtualenv(path=None, callback=None, wait=False):
 
         if not os.path.isfile(activator_path):
             raise ImportError()
-        
+
         runpy.run_path(activator_path)
         callback and callback()
     except ImportError:

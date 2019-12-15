@@ -1,10 +1,10 @@
 from __palette__ import Palette, show_palette, Action
 
-from pkg.logger import getLogger
-from pkg.package import LocalPackage
-from pkg.repo import get_online_packages, Repository
-from pkg.util import register_action, __work
-from pkg.config import g, _save_config
+from ..config import g, _save_config
+from ..logger import getLogger
+from ..package import LocalPackage
+from ..repo import get_online_packages, Repository
+from ..util import register_action, __work
 
 log = getLogger(__name__)
 
@@ -14,7 +14,6 @@ def install_package():
     actions = get_online_packages()
     actions = [(lambda _: Action(id=_.id, name=_.name, description=_.description, handler=lambda action: __work(_.install)))(item)
                for item in actions]
-    __builtins__['actions'] = actions
     show_palette(
         Palette('install', "Enter package name to install...", actions))
 
@@ -77,4 +76,3 @@ def enable_package():
 def _enable_package(name):
     g['ignored_packages'].remove(name)
     _save_config(g)
-
