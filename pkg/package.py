@@ -16,17 +16,16 @@ import zipfile
 import ida_kernwin
 import ida_loader
 
-from . import internal_api
 from .compat import quote
 from .config import g
 from .downloader import download
 from .env import ea as current_ea, os as current_os
+from .internal_api import invalidate_idausr, invalidate_proccache, get_extlangs
 from .logger import getLogger
 from .util import putenv, rename
 from .vendor.semantic_version import Version, Spec
 from .virtualenv_utils import FixInterpreter
 
-ALL_EA = (32, 64)
 __all__ = ["LocalPackage", "InstallablePackage"]
 
 log = getLogger(__name__)
@@ -100,7 +99,7 @@ class LocalPackage(object):
             new = _idausr_remove(idausr, self.path)
             putenv('IDAUSR', new)
 
-            internal_api.invalidate_idausr()
+            invalidate_idausr()
 
         with FixInterpreter():
             for script in self.metadata().get('uninstallers', []):
@@ -203,7 +202,7 @@ class LocalPackage(object):
             sys.path.append(self.path)
 
             # Update IDAUSR variable
-            internal_api.invalidate_idausr()
+            invalidate_idausr()
             putenv('IDAUSR', env)
 
             # Immediately load compatible plugins
@@ -214,7 +213,7 @@ class LocalPackage(object):
             self._find_loadable_modules('procs', invalidates.append)
 
             if invalidates:
-                internal_api.invalidate_proccache()
+                invalidate_proccache()
 
         ida_kernwin.execute_sync(handler, ida_kernwin.MFF_FAST)
 
@@ -255,7 +254,7 @@ class LocalPackage(object):
 
     def _find_loadable_modules(self, subdir, callback):
         # Load modules in external languages (.py, .idc, ...)
-        for suffix in ['.' + x.fileext for x in internal_api.get_extlangs()]:
+        for suffix in ['.' + x.fileext for x in get_extlangs()]:
             expr = os.path.join(self.path, subdir, '*' + suffix)
             for path in glob.glob(expr):
                 callback(str(path))

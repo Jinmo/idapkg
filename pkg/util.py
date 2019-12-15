@@ -4,6 +4,7 @@ import sys
 import threading
 
 import PyQt5.QtWidgets
+import PyQt5.QtCore
 import ida_kernwin
 
 

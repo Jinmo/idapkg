@@ -91,7 +91,7 @@ def init_environment(load=True):
 
     if not load:
         # Initialize native offsets and return
-        from pkg.internal_api import invalidate_idausr
+        from .internal_api import invalidate_idausr
         invalidate_idausr()
         return
 
@@ -117,5 +117,5 @@ def init_environment(load=True):
 
     hooks.init_hooks(_original_idausr)
 
-    from pkg.internal_api import invalidate_idausr
+    from .internal_api import invalidate_idausr
     invalidate_idausr()
