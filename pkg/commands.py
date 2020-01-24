@@ -3,6 +3,7 @@ Some console-friendly methods are exposed in pkg.*, and defined at pkg.commands.
 """
 import re
 
+from .compat import basestring
 from .config import g
 from .package import InstallablePackage, LocalPackage
 from .repo import Repository
@@ -13,7 +14,7 @@ __all__ = []
 
 
 def _parse_spec(spec):
-    match = re.match("^([a-zA-Z0-9\\-][a-zA-Z0-9_\\-]{3,214})(.*)$", spec)
+    match = re.match(r"^([a-zA-Z0-9\-][a-zA-Z0-9_\-]{3,214})(.*)$", spec)
     name = match.group(1)
     version = match.group(2).strip()
 

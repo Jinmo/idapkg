@@ -1,20 +1,29 @@
-import zipfile, tempfile, sys, os, threading, shutil, importlib
-def install():
-    tag='v0.1.3'
+import zipfile
+import tempfile
+import sys
+import os
+import threading
+import shutil
+import importlib
 
-    n=tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+
+def install():
+    tag = 'v0.1.3'
+
+    n = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
     n.close()
 
     print('Started downloading idapkg...')
-    importlib.import_module('urllib.request' if sys.version_info.major == 3 else 'urllib').urlretrieve('https://github.com/Jinmo/idapkg/archive/%s.zip'%tag, n.name)
+    importlib.import_module('urllib.request' if sys.version_info.major == 3 else 'urllib').urlretrieve(
+        'https://github.com/Jinmo/idapkg/archive/%s.zip' % tag, n.name)
 
-    f=open(n.name, 'rb+')
+    f = open(n.name, 'rb+')
     f.seek(0, os.SEEK_END)
     f.truncate(f.tell() - 0x28)
     f.close()
 
-    z=zipfile.ZipFile(n.name)
-    base=z.namelist()[0]
+    z = zipfile.ZipFile(n.name)
+    base = z.namelist()[0]
 
     sys.path.append(os.path.join(n.name, base))
 
@@ -35,5 +44,6 @@ def install():
 
     print('Installation success! Please restart IDA to use idapkg.')
     os.unlink(n.name)
+
 
 threading.Thread(target=install).start()

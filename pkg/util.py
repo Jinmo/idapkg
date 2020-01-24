@@ -3,8 +3,6 @@ import os
 import sys
 import threading
 
-import PyQt5.QtWidgets
-import PyQt5.QtCore
 import ida_kernwin
 
 
@@ -62,12 +60,3 @@ def rename(old, new):
             raise WindowsError(ctypes.windll.kernel32.GetLastError())
     else:
         return os.rename(old, new)
-
-
-class Worker(PyQt5.QtCore.QEvent):
-    def __init__(self, func, *args):
-        super(Worker, self).__init__(0)
-        self.func = func
-
-    def __del__(self):
-        self.func()
