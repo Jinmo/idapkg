@@ -7,9 +7,9 @@
 Execute the script below in IDAPython console (minified [`installer.py`](https://github.com/Jinmo/idapkg/raw/master/installer.py).)
 
 ```
-import urllib,zipfile,tempfile,sys,os,threading,shutil
-def b():P=os.path;r='v0.1.3';n=tempfile.NamedTemporaryFile(delete=False,suffix='.zip');n.close();print 'Downloading idapkg...';urllib.urlretrieve('https://github.com/Jinmo/idapkg/archive/%s.zip'%r,n.name);f=open(n.name,'rb+');f.seek(0,2);f.truncate(f.tell()-0x28);f.close();z=zipfile.ZipFile(n.name);J=z.namelist()[0];sys.path+=[P.join(n.name,J)];from pkg.config import g;import pkg.main as main;S=g['path']['packages'];z.extractall(S);z.close();Y=P.join(S,'idapkg');P.isdir(Y)and shutil.rmtree(Y);os.rename(P.join(S,J),Y);main.update_pythonrc();main.init_environment(False);print 'Installation success! Please restart IDA to use idapkg.';os.unlink(n.name);
-threading.Thread(target=b).start()
+import zipfile,tempfile,sys,os,threading,shutil,importlib
+def install():tag='v0.1.3';n=tempfile.NamedTemporaryFile(delete=False,suffix='.zip');n.close();print('Started downloading idapkg...');importlib.import_module('urllib.request' if sys.version_info.major==3 else 'urllib').urlretrieve('https://github.com/Jinmo/idapkg/archive/%s.zip'%tag,n.name);f=open(n.name,'rb+');f.seek(0,os.SEEK_END);f.truncate(f.tell()-0x28);f.close();z=zipfile.ZipFile(n.name);base=z.namelist()[0];sys.path.append(os.path.join(n.name,base));from pkg.config import g;import pkg.main as main;packages_path=g['path']['packages'];z.extractall(packages_path);z.close();dest=os.path.join(packages_path,'idapkg');os.path.isdir(dest)and shutil.rmtree(dest);os.rename(os.path.join(packages_path,base),dest);main.update_pythonrc();main.init_environment(False);print('Installation success! Please restart IDA to use idapkg.');os.unlink(n.name)
+threading.Thread(target=install).start()
 ```
 
 Then you can access related actions via command palette (Ctrl+Shift+P on windows/mac/linux, or Command+Shift+P on mac) after restarting IDA Pro.
