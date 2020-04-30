@@ -391,7 +391,7 @@ class InstallablePackage(object):
             if not releases:
                 error = "Release satisfying the condition %r %r not found on remote repository %r" % (
                     name, version_spec, repo)
-                raise Exception(Error)
+                raise Exception(error)
             downloading = None if (
                     prev and releases[-1]['version'] == prev.version) else releases[-1]['version']
         else:

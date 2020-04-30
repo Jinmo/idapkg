@@ -168,7 +168,7 @@ def invalidate_idausr():
                 offset = find_idausr_offset(path)
             else:
                 pass
-        except:
+        except Exception:
             traceback.print_exc()
 
         if offset is None:
