@@ -86,7 +86,7 @@ def init_environment(load=True):
     update_pythonrc()
     prepare_virtualenv(wait=True)
 
-    _initial_deps = ['ifred']
+    _optional_deps = ['ifred']
     _original_idausr = os.getenv('IDAUSR', '')
 
     if not load:
@@ -95,8 +95,8 @@ def init_environment(load=True):
         invalidate_idausr()
         return
 
-    if all(LocalPackage.by_name(_dep) for _dep in _initial_deps):
-        for _dep in _initial_deps:
+    if all(LocalPackage.by_name(_dep) for _dep in _optional_deps):
+        for _dep in _optional_deps:
             LocalPackage.by_name(_dep) \
                 ._find_loadable_modules('plugins', ida_loader.load_plugin)
 
@@ -104,7 +104,7 @@ def init_environment(load=True):
         # log.info("Downloading initial dependencies...")
         # log.info("IDA must be restarted after printing \"Done!\"")
 
-        # for _dep in _initial_deps:
+        # for _dep in _optional_deps:
         #     InstallablePackage \
         #         .install_from_repo(Repository('https://api.idapkg.com'), _dep)
 
