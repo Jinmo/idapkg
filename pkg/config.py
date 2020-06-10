@@ -31,11 +31,6 @@ import sys
 from .compat import basestring
 from .env import os as current_os, version_info
 
-try:
-    import idaapi as _
-except ImportError:
-    print("You're running package manager not in IDA Pro. Some functionalities will be limited.")
-
 
 def basedir():
     return os.path.expanduser(os.path.join('~', 'idapkg'))

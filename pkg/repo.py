@@ -58,19 +58,6 @@ class Repository(object):
                     name=item['name'], id=item['id'], version=item['version'], description=item['description'],
                     author=item['author'], repo=self)
 
-    def readme(self, name):
-        endpoint = '/info'
-        res = download(self.url + endpoint + '?id=' +
-                       quote(name), self.timeout)
-        if not res:  # Network Error
-            return
-        else:
-            res = json.load(res)
-            if not res['success']:
-                return
-            else:
-                return res['data']['readme']
-
     def list(self):
         """
         Fetch a list of all packages in the repo.

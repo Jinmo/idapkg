@@ -13,3 +13,8 @@ else:
         HTTPSConnection, HTTPConnection, CannotSendRequest, ResponseNotReady, BadStatusLine as RemoteDisconnected)
 
     basestring = basestring
+
+__all__ = (
+    'quote', 'urlparse',
+    'HTTPSConnection', 'HTTPConnection', 'CannotSendRequest', 'ResponseNotReady', 'RemoteDisconnected',
+    'basestring')

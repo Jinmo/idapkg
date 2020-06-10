@@ -1,0 +1,3 @@
+[flake8]
+exclude=kaitai,installer_inliner.py,semantic_version,docs
+max-line-length=160
