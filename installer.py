@@ -8,7 +8,7 @@ import importlib
 
 
 def install():
-    tag = 'v0.1.3'
+    tag = 'v0.1.4'
 
     n = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
     n.close()
