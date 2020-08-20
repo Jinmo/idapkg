@@ -4,6 +4,7 @@ import ida_kernwin
 from PyQt5.QtCore import QCoreApplication, QProcess
 
 from .util import putenv
+from .env import version
 
 _HOOKS = []
 
@@ -41,6 +42,9 @@ def new_instance():
 
 
 def init_hooks(idausr):
+    if version >= 7.5:
+        return
+
     _setter = IdausrTemporarySetter(idausr)
 
     class ActionHandler(ida_kernwin.action_handler_t):
@@ -58,5 +62,5 @@ def init_hooks(idausr):
     for name, label, handler, before in _HOOKS:
         if ida_kernwin.unregister_action(name):
             action = ida_kernwin.action_desc_t(name, label, ActionHandler(handler))
-            ida_kernwin.register_action(action)
+            # ida_kernwin.register_action(action)
             ida_kernwin.attach_action_to_menu(before, name, ida_kernwin.SETMENU_INS)
