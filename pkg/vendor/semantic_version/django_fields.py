@@ -2,9 +2,8 @@
 # Copyright (c) The python-semanticversion project
 # This code is distributed under the two-clause BSD License.
 
-from __future__ import unicode_literals
+import warnings
 
-import django
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
@@ -17,14 +16,7 @@ class SemVerField(models.CharField):
         kwargs.setdefault('max_length', 200)
         super(SemVerField, self).__init__(*args, **kwargs)
 
-    if django.VERSION[:2] < (1, 8):
-        def contribute_to_class(self, cls, name, **kwargs):
-            """Emulate SubFieldBase for Django < 1.8"""
-            super(SemVerField, self).contribute_to_class(cls, name, **kwargs)
-            from django.db.models.fields import subclassing
-            setattr(cls, self.name, subclassing.Creator(self))
-
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection, *args):
         """Convert from the database format.
 
         This should be the inverse of self.get_prep_value()
@@ -40,7 +32,7 @@ class SemVerField(models.CharField):
         return value
 
     def value_to_string(self, obj):
-        value = self.to_python(self._get_val_from_obj(obj))
+        value = self.to_python(self.value_from_object(obj))
         return str(value)
 
     def run_validators(self, value):
@@ -55,6 +47,12 @@ class VersionField(SemVerField):
 
     def __init__(self, *args, **kwargs):
         self.partial = kwargs.pop('partial', False)
+        if self.partial:
+            warnings.warn(
+                "Use of `partial=True` will be removed in 3.0.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.coerce = kwargs.pop('coerce', False)
         super(VersionField, self).__init__(*args, **kwargs)
 
@@ -83,10 +81,21 @@ class SpecField(SemVerField):
     }
     description = _("Version specification list")
 
+    def __init__(self, *args, **kwargs):
+        self.syntax = kwargs.pop('syntax', base.DEFAULT_SYNTAX)
+        super(SpecField, self).__init__(*args, **kwargs)
+
+    def deconstruct(self):
+        """Handle django.db.migrations."""
+        name, path, args, kwargs = super(SpecField, self).deconstruct()
+        if self.syntax != base.DEFAULT_SYNTAX:
+            kwargs['syntax'] = self.syntax
+        return name, path, args, kwargs
+
     def to_python(self, value):
         """Converts any value to a base.Spec field."""
         if value is None or value == '':
             return value
-        if isinstance(value, base.Spec):
+        if isinstance(value, base.BaseSpec):
             return value
-        return base.Spec(value)
+        return base.BaseSpec.parse(value, syntax=self.syntax)
