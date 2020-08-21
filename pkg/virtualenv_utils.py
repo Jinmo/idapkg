@@ -9,9 +9,9 @@ from .process import Popen, system
 from .util import __work
 
 # extracted from https://pypi.org/simple/virtualenv/
-VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/57/6e' \
-                 '/a13442adf18bada682f88f55638cd43cc7a39c3e00fdcf898ca4ceaeb682/virtualenv-20.0.21-py2.py3-none-any.whl'
-HASH = 'a730548b27366c5e6cbdf6f97406d861cccece2e22275e8e1a757aeff5e00c70'
+VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/62/77' \
+                 '/6a86ef945ad39aae34aed4cc1ae4a2f941b9870917a974ed7c5b6f137188/virtualenv-16.7.8-py2.py3-none-any.whl'
+HASH = 'b57776b44f91511866594e477dd10e76a6eb44439cdd7f06dcd30ba4c5bd854f'
 
 log = getLogger(__name__)
 
