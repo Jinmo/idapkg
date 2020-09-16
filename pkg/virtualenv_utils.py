@@ -2,11 +2,11 @@ import os
 import runpy
 import subprocess
 import sys
+import tempfile
+from hashlib import sha256
 
-from .config import g
 from .logger import getLogger
 from .process import Popen, system
-from .util import __work
 
 # extracted from https://pypi.org/simple/virtualenv/
 VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/62/77' \
@@ -51,19 +51,19 @@ class FixInterpreter(object):
 
 
 def _install_virtualenv(path):
-    from hashlib import sha256
     from .downloader import download
 
     log.info('Downloading virtualenv from %r ...', VIRTUALENV_URL)
     data = download(VIRTUALENV_URL).read()
-    assert sha256(data).hexdigest() == HASH, 'hash error... MITM?'
 
-    import tempfile
+    if sha256(data).hexdigest() != HASH:
+        raise RuntimeError('virtualenv hash does not match!')
 
     with tempfile.NamedTemporaryFile('wb', suffix=".zip", delete=False) as zf:
         zf.write(data)
         zf.flush()
         sys.path.insert(0, zf.name)
+
         import virtualenv
 
         with FixInterpreter():
@@ -72,39 +72,33 @@ def _install_virtualenv(path):
             log.info('Done!')
 
 
-def prepare_virtualenv(path=None, callback=None, wait=False):
-    if path is None:
-        path = g['path']['virtualenv']
-
-    abspath = os.path.abspath(path)
-    sys.path.insert(0, abspath)
-
-    if not wait and callback:
-        def callback(): return __work(callback)
+def prepare_virtualenv(path, tried=False):
+    # Normalize path first
+    path = os.path.abspath(path)
 
     try:
+        # 1. Run activator in virtualenv
         activator_path = os.path.join(
-            abspath, 'Scripts' if sys.platform == 'win32' else 'bin', 'activate_this.py')
+            path, 'Scripts' if sys.platform == 'win32' else 'bin', 'activate_this.py')
 
         if not os.path.isfile(activator_path):
             raise ImportError()
 
         runpy.run_path(activator_path)
-        callback and callback()
+
+        # 2. Check if pip is in the virtualenv
+        import pip
+        if not os.path.abspath(pip.__file__).startswith(path):
+            raise ImportError()
+
     except ImportError:
-        tasks = [
-            lambda: prepare_virtualenv(path)
-        ]
+        if tried:
+            log.error("Failed installing virtualenv!")
+            return
 
-        try:
-            import pip
-            if not os.path.abspath(pip.__file__).startswith(abspath):
-                raise ImportError()
-        except ImportError:
-            log.info(
-                'Will install virtualenv at %r since pip module is not found...', path)
-            tasks.insert(0, lambda: _install_virtualenv(path))
+        log.info('pip is not found in the virtualenv.')
+        log.info('Will install virtualenv at %r...', path)
 
-        def handler(): return ([task()
-                                for task in tasks], callback and callback())
-        __work(handler) if not wait else handler()
+        # Install and try again
+        _install_virtualenv(path)
+        prepare_virtualenv(path, True)

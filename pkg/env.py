@@ -25,11 +25,7 @@ version = Decimal('0.0')
 
 
 def __load_version_from_ida():
-    if idc.__EA64__:
-        _ea = 64
-    else:
-        _ea = 32
-
+    _ea = 64 if idc.__EA64__ else 32
     _os = OS_MAP[sys.platform]
     return _ea, _os
 

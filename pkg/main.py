@@ -1,12 +1,12 @@
 import os
 
 import ida_diskio
-import ida_loader
 
+from . import __version__
+from .config import g
 from .logger import getLogger
 from .package import LocalPackage
 from .virtualenv_utils import prepare_virtualenv
-from . import __version__
 
 log = getLogger(__name__)
 
@@ -84,9 +84,8 @@ def init_environment(load=True):
     log.info("idapkg version %s" % __version__)
 
     update_pythonrc()
-    prepare_virtualenv(wait=True)
+    prepare_virtualenv(g['path']['virtualenv'])
 
-    _optional_deps = ['ifred']
     _original_idausr = os.getenv('IDAUSR', '')
 
     if not load:
@@ -95,27 +94,13 @@ def init_environment(load=True):
         invalidate_idausr()
         return
 
-    if all(LocalPackage.by_name(_dep) for _dep in _optional_deps):
-        for _dep in _optional_deps:
-            LocalPackage.by_name(_dep) \
-                ._find_loadable_modules('plugins', ida_loader.load_plugin)
-
-    else:
-        # log.info("Downloading initial dependencies...")
-        # log.info("IDA must be restarted after printing \"Done!\"")
-
-        # for _dep in _optional_deps:
-        #     InstallablePackage \
-        #         .install_from_repo(Repository('https://api.idapkg.com'), _dep)
-
-        pass  # do not automatically download packages from idapkg.com yet
+    ifred = LocalPackage.by_name('ifred')
+    if ifred:
+        ifred.load()
+        from . import actions
 
     for pkg in LocalPackage.all():
         pkg.populate_env()
-
-    from . import actions, hooks
-
-    hooks.init_hooks(_original_idausr)
 
     from .internal_api import invalidate_idausr
     invalidate_idausr()

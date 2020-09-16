@@ -2,6 +2,7 @@
 Package-related classes and methods are in pkg.package module. All constructing arguments are accessible via property.
 """
 
+import ctypes
 import glob
 import json
 import os
@@ -9,7 +10,6 @@ import random
 import runpy
 import shutil
 import sys
-import threading
 import traceback
 import zipfile
 
@@ -20,15 +20,22 @@ from .compat import quote
 from .config import g
 from .downloader import download
 from .env import ea as current_ea, os as current_os
-from .internal_api import invalidate_idausr, invalidate_proccache, get_extlangs
+from .internal_api import invalidate_proccache, get_extlangs, idausr_remove, idausr_add
 from .logger import getLogger
-from .util import putenv, rename
 from .vendor.semantic_version import Version, Spec
 from .virtualenv_utils import FixInterpreter
 
 __all__ = ["LocalPackage", "InstallablePackage"]
 
 log = getLogger(__name__)
+
+
+def rename(old, new):
+    if sys.platform == 'win32':
+        if not ctypes.windll.kernel32.MoveFileExA(str(old), str(new), 0):
+            raise WindowsError(ctypes.windll.kernel32.GetLastError())
+    else:
+        return os.rename(old, new)
 
 
 def _get_native_suffix():
@@ -43,46 +50,6 @@ def _get_native_suffix():
     return suffix
 
 
-def _unique_items(items):
-    seen = set()
-    res = [(item, seen.add(item))[0] for item in items if item not in seen]
-    return res
-
-
-def _idausr_add_unix(orig, new):
-    if orig is None:
-        orig = os.path.join(os.getenv('HOME'), '.idapro')
-    return ':'.join(_unique_items(orig.split(':') + [new]))
-
-
-def _idausr_add_win(orig, new):
-    if orig is None:
-        orig = os.path.join(os.getenv('APPDATA'), 'Hex-Rays', 'IDA Pro')
-    return ';'.join(_unique_items(orig.split(';') + [new]))
-
-
-def _idausr_add(orig, new):
-    if current_os == 'win':
-        return _idausr_add_win(orig, new)
-    else:
-        return _idausr_add_unix(orig, new)
-
-
-def _idausr_remove(orig, target):
-    if current_os == 'win':
-        sep = ';'
-    else:
-        sep = ':'
-
-    orig = orig.split(sep)
-    index = orig.index(target)
-
-    assert index != -1
-
-    orig.remove(target)
-    return sep.join(orig)
-
-
 class LocalPackage(object):
     def __init__(self, id, path, version):
         self.id = str(id)
@@ -94,12 +61,7 @@ class LocalPackage(object):
         """
         Removes a package.
         """
-        idausr = os.environ.get('IDAUSR', '')
-        if self.path in idausr:
-            new = _idausr_remove(idausr, self.path)
-            putenv('IDAUSR', new)
-
-            invalidate_idausr()
+        idausr_remove(self.path)
 
         with FixInterpreter():
             for script in self.metadata().get('uninstallers', []):
@@ -179,7 +141,6 @@ class LocalPackage(object):
             sys.path.append(self.path)
             return
 
-        env = str(_idausr_add(os.getenv('IDAUSR'), self.path))
         # XXX: find a more efficient way to ensure dependencies
         errors = []
         for dependency in self.metadata().get('dependencies', {}).keys():
@@ -195,15 +156,12 @@ class LocalPackage(object):
             return
 
         def handler():
-            assert isinstance(threading.current_thread(),
-                              threading._MainThread)
             # Load plugins immediately
             # processors / loaders will be loaded on demand
             sys.path.append(self.path)
 
             # Update IDAUSR variable
-            invalidate_idausr()
-            putenv('IDAUSR', env)
+            idausr_add(os.getenv('IDAUSR'), self.path)
 
             # Immediately load compatible plugins
             self._find_loadable_modules('plugins', ida_loader.load_plugin)
@@ -215,6 +173,7 @@ class LocalPackage(object):
             if invalidates:
                 invalidate_proccache()
 
+        # Run in main thread
         ida_kernwin.execute_sync(handler, ida_kernwin.MFF_FAST)
 
     def populate_env(self):
@@ -235,7 +194,7 @@ class LocalPackage(object):
                 log.error(error)
             return
 
-        putenv('IDAUSR', str(_idausr_add(os.getenv("IDAUSR"), self.path)))
+        idausr_add(os.getenv("IDAUSR"), self.path)
         sys.path.append(self.path)
 
     def plugins(self):
@@ -350,115 +309,113 @@ class InstallablePackage(object):
         """
         Just calls :code:`InstallablePackage.install_from_repo(self.repo, self.id, upgrade)`.
         """
-        InstallablePackage.install_from_repo(
-            self.repo, self.id, allow_upgrade=upgrade)
-
-    @staticmethod
-    def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visited=None):
-        """
-        This method downloads a package satisfying spec.
-
-        .. note ::
-            The function waits until all of dependencies are installed.
-            Run it as separate thread if possible.
-        """
-
-        top_level = _visited is None
-        _visited = _visited or {}
-
-        if name in _visited:
-            log.warn("Cyclic dependency found when installing %r <-> %r",
-                     name, _visited)
-            return
-
-        prev = LocalPackage.by_name(name)
-
-        _version_spec = Spec(version_spec)
-        satisfies_local = prev and Version(prev.version) in _version_spec
-
-        if allow_upgrade or not satisfies_local:
-            log.debug("Fetching releases for %r from %r...", name, repo)
-
-            releases = repo.releases(name)
-            if not releases:
-                error = "Release not found on remote repository: %r on %r (error: %r)" % (
-                    name, repo, releases['error'])
-                raise Exception(error)
-
-            releases = [release for release in releases
-                        if Version(release['version']) in _version_spec]
-
-            if not releases:
-                error = "Release satisfying the condition %r %r not found on remote repository %r" % (
-                    name, version_spec, repo)
-                raise Exception(error)
-            downloading = None if (
-                    prev and releases[-1]['version'] == prev.version) else releases[-1]['version']
-        else:
-            downloading = None
-
-        if downloading:
-            log.info('Collecting %s...', name)
-            data = download(repo.url + '/download?spec=' +
-                            quote(name) + '==' + quote(downloading),
-                            to_file=True)
-            io = data
-            f = zipfile.ZipFile(io, 'r')
-
-            info = json.load(f.open('info.json'))
-            install_path = os.path.join(g['path']['packages'], info["_id"])
-
-            # this ensures os.path.exists(install_path) == False
-            # TODO: should we unload a already-loaded plugin?
-            if prev:
-                prev.remove()
-                assert not os.path.exists(install_path)
-
-            # XXX: edge case?
-            removed = os.path.join(install_path, '.removed')
-            if os.path.isfile(removed):
-                os.unlink(removed)
-
-            log.info('Extracting into %r...', install_path)
-            f.extractall(install_path)
-
-            # Initiate LocalPackage object
-            pkg = LocalPackage(info['_id'], install_path, info['version'])
-        else:
-            pkg = prev
-
-            log.info("Requirement already satisfied: %s%s",
-                     name, '' if version_spec == '*' else version_spec)
-
-        restart_required = pkg.metadata().get('restart_required', False)
-        _visited[name] = (pkg.version, restart_required)
-
-        # First, install dependencies
-        # TODO: add version check
-        for dep_name, dep_version_spec in pkg.metadata().get('dependencies', {}).items():
-            InstallablePackage.install_from_repo(
-                repo, dep_name, dep_version_spec, allow_upgrade, _visited)
-
-        if downloading:
-            pkg.install()
-
-        if not restart_required:
-            pkg.load()
-
-        if top_level:
-            log.info("Successfully installed %s", ' '.join('%s-%s' %
-                                                           (key, value[0]) for key, value in _visited.items()))
-
-            delayed = [(key, value)
-                       for key, value in _visited.items() if value[1]]
-            if delayed:
-                log.info(
-                    "Plugins in the following packages will be loaded after restarting IDA.")
-                log.info("  %s", " ".join('%s-%s' %
-                                          (key, value[0]) for key, value in delayed))
-
-        return pkg
+        install_from_repo(self.repo, self.id, allow_upgrade=upgrade)
 
     def __repr__(self):
         return '<InstallablePackage id=%r version=%r repo=%r>' % \
                (self.id, self.version, self.repo)
+
+
+def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visited=None):
+    """
+    This method downloads a package satisfying spec.
+
+    .. note ::
+        The function waits until all of dependencies are installed.
+        Run it as separate thread if possible.
+    """
+
+    top_level = _visited is None
+    _visited = _visited or {}
+
+    if name in _visited:
+        log.warn("Cyclic dependency found when installing %r <-> %r",
+                 name, _visited)
+        return
+
+    prev = LocalPackage.by_name(name)
+
+    _version_spec = Spec(version_spec)
+    satisfies_local = prev and Version(prev.version) in _version_spec
+
+    if allow_upgrade or not satisfies_local:
+        log.debug("Fetching releases for %r from %r...", name, repo)
+
+        releases = repo.releases(name)
+        if not releases:
+            error = "Release not found on remote repository: %r on %r (error: %r)" % (
+                name, repo, releases['error'])
+            raise Exception(error)
+
+        releases = [release for release in releases
+                    if Version(release['version']) in _version_spec]
+
+        if not releases:
+            error = "Release satisfying the condition %r %r not found on remote repository %r" % (
+                name, version_spec, repo)
+            raise Exception(error)
+        downloading = None if (
+                prev and releases[-1]['version'] == prev.version) else releases[-1]['version']
+    else:
+        downloading = None
+
+    if downloading:
+        log.info('Collecting %s...', name)
+        data = download(repo.url + '/download?spec=' +
+                        quote(name) + '==' + quote(downloading),
+                        to_file=True)
+        io = data
+        f = zipfile.ZipFile(io, 'r')
+
+        info = json.load(f.open('info.json'))
+        install_path = os.path.join(g['path']['packages'], info["_id"])
+
+        # this ensures os.path.exists(install_path) == False
+        # TODO: should we unload a already-loaded plugin?
+        if prev:
+            prev.remove()
+            assert not os.path.exists(install_path)
+
+        # XXX: edge case?
+        removed = os.path.join(install_path, '.removed')
+        if os.path.isfile(removed):
+            os.unlink(removed)
+
+        log.info('Extracting into %r...', install_path)
+        f.extractall(install_path)
+
+        # Initiate LocalPackage object
+        pkg = LocalPackage(info['_id'], install_path, info['version'])
+    else:
+        pkg = prev
+
+        log.info("Requirement already satisfied: %s%s",
+                 name, '' if version_spec == '*' else version_spec)
+
+    restart_required = pkg.metadata().get('restart_required', False)
+    _visited[name] = (pkg.version, restart_required)
+
+    # First, install dependencies
+    # TODO: add version check
+    for dep_name, dep_version_spec in pkg.metadata().get('dependencies', {}).items():
+        install_from_repo(repo, dep_name, dep_version_spec, allow_upgrade, _visited)
+
+    if downloading:
+        pkg.install()
+
+    if not restart_required:
+        pkg.load()
+
+    if top_level:
+        log.info("Successfully installed %s",
+                 ' '.join('%s-%s' % (key, value[0]) for key, value in _visited.items()))
+
+        delayed = [(key, value)
+                   for key, value in _visited.items() if value[1]]
+        if delayed:
+            log.info(
+                "Plugins in the following packages will be loaded after restarting IDA.")
+            log.info(
+                "  %s", " ".join('%s-%s' % (key, value[0]) for key, value in delayed))
+
+    return pkg

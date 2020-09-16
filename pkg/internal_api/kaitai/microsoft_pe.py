@@ -1,12 +1,14 @@
 # This is a generated file! Please edit source .ksy file and use kaitai-struct-compiler to rebuild
 
-from pkg_resources import parse_version
-from ...vendor.kaitaistruct import __version__ as ks_version, KaitaiStruct, KaitaiStream, BytesIO
 from enum import Enum
 
+from pkg_resources import parse_version
+
+from ...vendor.kaitaistruct import __version__ as ks_version, KaitaiStruct, KaitaiStream, BytesIO
 
 if parse_version(ks_version) < parse_version('0.7'):
     raise Exception("Incompatible Kaitai Struct Python API: 0.7 or later is required, but you have %s" % (ks_version))
+
 
 class MicrosoftPe(KaitaiStruct):
     """
@@ -18,6 +20,7 @@ class MicrosoftPe(KaitaiStruct):
         rom_image = 263
         pe32 = 267
         pe32_plus = 523
+
     def __init__(self, _io, _parent=None, _root=None):
         self._io = _io
         self._parent = _parent
@@ -42,6 +45,7 @@ class MicrosoftPe(KaitaiStruct):
             pkcs_signed_data = 2
             reserved_1 = 3
             ts_stack_signed = 4
+
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
             self._parent = _parent
@@ -53,7 +57,6 @@ class MicrosoftPe(KaitaiStruct):
             self.revision = self._root.CertificateEntry.CertificateRevision(self._io.read_u2le())
             self.certificate_type = self._root.CertificateEntry.CertificateType(self._io.read_u2le())
             self.certificate_bytes = self._io.read_bytes((self.length - 8))
-
 
     class OptionalHeaderWindows(KaitaiStruct):
 
@@ -70,6 +73,7 @@ class MicrosoftPe(KaitaiStruct):
             efi_rom = 13
             xbox = 14
             windows_boot_application = 16
+
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
             self._parent = _parent
@@ -124,7 +128,6 @@ class MicrosoftPe(KaitaiStruct):
             self.loader_flags = self._io.read_u4le()
             self.number_of_rva_and_sizes = self._io.read_u4le()
 
-
     class OptionalHeaderDataDirs(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -149,7 +152,6 @@ class MicrosoftPe(KaitaiStruct):
             self.delay_import_descriptor = self._root.DataDir(self._io, self, self._root)
             self.clr_runtime_header = self._root.DataDir(self._io, self, self._root)
 
-
     class DataDir(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -160,7 +162,6 @@ class MicrosoftPe(KaitaiStruct):
         def _read(self):
             self.virtual_address = self._io.read_u4le()
             self.size = self._io.read_u4le()
-
 
     class CoffSymbol(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
@@ -198,7 +199,6 @@ class MicrosoftPe(KaitaiStruct):
             self._io.seek(_pos)
             return self._m_data if hasattr(self, '_m_data') else None
 
-
     class PeHeader(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -216,7 +216,6 @@ class MicrosoftPe(KaitaiStruct):
             for i in range(self.coff_hdr.number_of_sections):
                 self.sections[i] = self._root.Section(self._io, self, self._root)
 
-
         @property
         def certificate_table(self):
             if hasattr(self, '_m_certificate_table'):
@@ -232,7 +231,6 @@ class MicrosoftPe(KaitaiStruct):
 
             return self._m_certificate_table if hasattr(self, '_m_certificate_table') else None
 
-
     class OptionalHeader(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -244,7 +242,6 @@ class MicrosoftPe(KaitaiStruct):
             self.std = self._root.OptionalHeaderStd(self._io, self, self._root)
             self.windows = self._root.OptionalHeaderWindows(self._io, self, self._root)
             self.data_dirs = self._root.OptionalHeaderDataDirs(self._io, self, self._root)
-
 
     class Section(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
@@ -276,7 +273,6 @@ class MicrosoftPe(KaitaiStruct):
             self._io.seek(_pos)
             return self._m_body if hasattr(self, '_m_body') else None
 
-
     class CertificateTable(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -291,8 +287,6 @@ class MicrosoftPe(KaitaiStruct):
                 self.items.append(self._root.CertificateEntry(self._io, self, self._root))
                 i += 1
 
-
-
     class MzPlaceholder(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -304,7 +298,6 @@ class MicrosoftPe(KaitaiStruct):
             self.magic = self._io.ensure_fixed_contents(b"\x4D\x5A")
             self.data1 = self._io.read_bytes(58)
             self.ofs_pe = self._io.read_u4le()
-
 
     class OptionalHeaderStd(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
@@ -324,8 +317,6 @@ class MicrosoftPe(KaitaiStruct):
             self.base_of_code = self._io.read_u4le()
             if self.format == self._root.PeFormat.pe32:
                 self.base_of_data = self._io.read_u4le()
-
-
 
     class CoffHeader(KaitaiStruct):
         """
@@ -360,6 +351,7 @@ class MicrosoftPe(KaitaiStruct):
             amd64 = 34404
             m32r = 36929
             arm64 = 43620
+
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
             self._parent = _parent
@@ -416,7 +408,6 @@ class MicrosoftPe(KaitaiStruct):
             self._io.seek(_pos)
             return self._m_symbol_table if hasattr(self, '_m_symbol_table') else None
 
-
     class Annoyingstring(KaitaiStruct):
         def __init__(self, _io, _parent=None, _root=None):
             self._io = _io
@@ -435,7 +426,8 @@ class MicrosoftPe(KaitaiStruct):
             if self.name_zeroes == 0:
                 io = self._root._io
                 _pos = io.pos()
-                io.seek(((self._parent._parent.symbol_name_table_offset + self.name_offset) if self.name_zeroes == 0 else 0))
+                io.seek(((
+                                 self._parent._parent.symbol_name_table_offset + self.name_offset) if self.name_zeroes == 0 else 0))
                 self._m_name_from_offset = (io.read_bytes_term(0, False, True, False)).decode(u"ascii")
                 io.seek(_pos)
 
@@ -484,7 +476,6 @@ class MicrosoftPe(KaitaiStruct):
 
             return self._m_name_from_short if hasattr(self, '_m_name_from_short') else None
 
-
     @property
     def pe(self):
         if hasattr(self, '_m_pe'):
@@ -495,5 +486,3 @@ class MicrosoftPe(KaitaiStruct):
         self._m_pe = self._root.PeHeader(self._io, self, self._root)
         self._io.seek(_pos)
         return self._m_pe if hasattr(self, '_m_pe') else None
-
-
