@@ -17,38 +17,21 @@ log = getLogger(__name__)
 def _unique_items(items):
     seen = set()
     res = [(item, seen.add(item))[0] for item in items if item not in seen]
+
     return res
 
 
-def _idausr_add_unix(orig, new):
-    if orig is None:
-        orig = os.path.join(os.getenv('HOME'), '.idapro')
-    return ':'.join(_unique_items(orig.split(':') + [new]))
+def idausr_add(new):
+    orig = idaapi.get_ida_subdirs('')
+    new = _unique_items(orig + [new])
+    apply_idausr(new)
 
 
-def _idausr_add_win(orig, new):
-    if orig is None:
-        orig = os.path.join(os.getenv('APPDATA'), 'Hex-Rays', 'IDA Pro')
-    return ';'.join(_unique_items(orig.split(';') + [new]))
-
-
-def idausr_add(orig, new):
-    if current_os == 'win':
-        new = _idausr_add_win(orig, new)
-    else:
-        new = _idausr_add_unix(orig, new)
-
-    invalidate_idausr(new)
-
-
-def idausr_remove(orig, target):
-    sep = ';' if current_os == 'win' else ':'
-
-    arr = orig.split(sep)
-    assert target in arr
-    arr.remove(target)
-
-    invalidate_idausr(sep.join(arr))
+def idausr_remove(target):
+    orig = idaapi.get_ida_subdirs('')
+    assert target in orig, repr((orig, target))
+    orig.remove(target)
+    apply_idausr(orig)
 
 
 def putenv(key, value):
@@ -171,11 +154,17 @@ def invalidate_proccache():
 __possible_to_invalidate = None
 
 
-def invalidate_idausr(new_value=None):
+def invalidate_idausr():
+    return
+
+
+def apply_idausr(new_value):
     global __possible_to_invalidate
 
     if __possible_to_invalidate is False:
         return False
+
+    original = os.getenv('IDAUSR', '')
 
     cfg = g['idausr_native_bases'][current_os][version_info.str()]
     already_found = cfg[current_ea == 64]
@@ -225,17 +214,21 @@ def invalidate_idausr(new_value=None):
             cfg[current_ea == 64] = offset
             _save_config(g)
 
-    # Backup the vector of IDAUSR.split(sep)
+    # Re-initialize the vector of IDAUSR paths
+    # Memory leak here, but not too much
     ptr = ctypes.cast(base + offset, ctypes.POINTER(ctypes.c_size_t))
-    backup = ptr[0:3]
+    ptr[0] = ptr[1] = ptr[2] = 0
 
-    # Refresh cache again
-    if new_value:
-        putenv('IDAUSR', new_value)
+    # Apply IDAUSR
+    idadir = idaapi.idadir('')
+    new_value = [item for item in new_value if item != idadir]
+
+    # Refresh cache
+    sep = ';' if current_os == 'win' else ':'
+    putenv('IDAUSR', sep.join(new_value))
     idaapi.get_ida_subdirs('')
 
     # Restore IDAUSR, so the child process is not affected
-    # Memory leak here, but not too much
-    ptr[0], ptr[1], ptr[2] = backup
+    putenv('IDAUSR', original)
 
     return True

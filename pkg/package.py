@@ -161,7 +161,7 @@ class LocalPackage(object):
             sys.path.append(self.path)
 
             # Update IDAUSR variable
-            idausr_add(os.getenv('IDAUSR'), self.path)
+            idausr_add(self.path)
 
             # Immediately load compatible plugins
             self._find_loadable_modules('plugins', ida_loader.load_plugin)
@@ -194,7 +194,7 @@ class LocalPackage(object):
                 log.error(error)
             return
 
-        idausr_add(os.getenv("IDAUSR"), self.path)
+        idausr_add(self.path)
         sys.path.append(self.path)
 
     def plugins(self):
