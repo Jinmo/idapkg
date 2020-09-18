@@ -22,8 +22,7 @@ def install_package():
     actions = get_online_packages()
     actions = [
         (lambda _: Action(id=_.id, name=_.name, description=_.description,
-                          handler=lambda action: _run_in_background(_.install)))(
-            item)
+                          handler=lambda action: _run_in_background(_.install)))(item)
         for item in actions]
     show_palette(
         Palette('install', "Enter package name to install...", actions))
@@ -43,8 +42,7 @@ def upgrade_package():
     actions = LocalPackage.all()
     actions = [(lambda _: Action(id=_.id, name='%s %s' % (_.id, _.version),
                                  handler=lambda action: _run_in_background(lambda: _upgrade_package(action.id))))(item)
-               for item in
-               actions]
+               for item in actions]
 
     show_palette(Palette('remove', "Enter package name to remove...", actions))
 
@@ -52,7 +50,7 @@ def upgrade_package():
 def _upgrade_package(name):
     log.info("Upgrading package %s..." % name)
     repos = Repository.from_urls()
-    res = None
+
     for repo in repos:
         res = repo.single(name)
         if res:
@@ -68,8 +66,7 @@ def disable_package():
     actions = LocalPackage.all()
     actions = [(lambda _: Action(id=_.id, name='%s %s' % (_.id, _.version),
                                  handler=lambda action: _run_in_background(lambda: _disable_package(action.id))))(item)
-               for item in
-               actions]
+               for item in actions]
 
     show_palette(Palette('disable', "Enter package name to disable...", actions))
 
@@ -84,8 +81,7 @@ def enable_package():
     actions = LocalPackage.all(disabled=True)
     actions = [(lambda _: Action(id=_.id, name='%s %s' % (_.id, _.version),
                                  handler=lambda action: _run_in_background(lambda: _enable_package(action.id))))(item)
-               for item in
-               actions]
+               for item in actions]
 
     show_palette(Palette('disable', "Enter package name to disable...", actions))
 

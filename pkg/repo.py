@@ -111,8 +111,7 @@ class Repository(object):
         if repos is None:
             repos = g['repos']
 
-        repos = [Repository(repo) if isinstance(
-            repo, basestring) else repo for repo in repos]
+        repos = [Repository(repo) if isinstance(repo, basestring) else repo for repo in repos]
         return repos
 
     def __repr__(self):
@@ -127,7 +126,7 @@ def get_online_packages(repos=None):
     :returns: list(:class:`~pkg.package.InstallablePackage`) freom each repos.
     """
 
-    repos = Repository.from_urls()
+    repos = Repository.from_urls(repos)
 
     pool = ThreadPool(MAX_CONCURRENT)
     results = pool.map(lambda repo: repo.list(), repos)
