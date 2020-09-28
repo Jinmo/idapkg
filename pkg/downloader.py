@@ -79,4 +79,4 @@ def download(url, timeout=None, to_file=False):
 
 
 if __name__ == '__main__':
-    print(repr(download('http://idapkg.com', to_file=True).read()))
+    print(repr(download('https://idapkg.com', to_file=True).read()))

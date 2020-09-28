@@ -19,11 +19,12 @@ def _run_in_background(f):
 
 @register_action('Packages: Install Package')
 def install_package():
-    actions = get_online_packages()
+    pkgs = get_online_packages()
+    pkgs = [x for x in pkgs if LocalPackage.by_name(x.id) is None]
     actions = [
         (lambda _: Action(id=_.id, name=_.name, description=_.description,
                           handler=lambda action: _run_in_background(_.install)))(item)
-        for item in actions]
+        for item in pkgs]
     show_palette(
         Palette('install', "Enter package name to install...", actions))
 
@@ -52,7 +53,7 @@ def _upgrade_package(name):
     repos = Repository.from_urls()
 
     for repo in repos:
-        res = repo.single(name)
+        res = repo.get(name)
         if res:
             res.install(upgrade=True)
             return

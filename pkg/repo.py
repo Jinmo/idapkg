@@ -4,11 +4,11 @@ import json
 import traceback
 from multiprocessing.pool import ThreadPool
 
-from .compat import quote, basestring
+from .compat import quote
 from .config import g
 from .downloader import download
 from .logger import getLogger
-from .package import InstallablePackage, LocalPackage
+from .package import InstallablePackage
 
 # Connection timeout
 TIMEOUT = 8
@@ -25,17 +25,10 @@ class Repository(object):
     """
 
     def __init__(self, url, timeout=TIMEOUT):
-        if isinstance(url, Repository):
-            self.url = url.url
-            self.timeout = url.timeout
-        elif isinstance(url, basestring):
-            self.url = url
-            self.timeout = timeout
-        else:
-            raise ValueError(
-                "url must be Repository instance or str | unicode.")
+        self.url = url
+        self.timeout = timeout
 
-    def single(self, name):
+    def get(self, name):
         """
         Fetch metadata for single package from the repo.
 
@@ -43,20 +36,19 @@ class Repository(object):
           else a :class:`~pkg.package.InstallablePackage` object
         :rtype: pkg.package.InstallablePackage or None
         """
-        endpoint = '/info'
-        res = download(self.url + endpoint + '?id=' +
-                       quote(name), self.timeout)
+        endpoint = '/info?id=' + quote(name)
+        res = download(self.url + endpoint, self.timeout)
         if not res:  # Network Error
             return
+
+        res = json.load(res)
+        if not res['success']:
+            return
         else:
-            res = json.load(res)
-            if not res['success']:
-                return
-            else:
-                item = res['data']
-                return InstallablePackage(
-                    name=item['name'], id=item['id'], version=item['version'], description=item['description'],
-                    author=item['author'], repo=self)
+            item = res['data']
+            return InstallablePackage(
+                name=item['name'], id=item['id'], version=item['version'], description=item['description'],
+                author=item['author'], repo=self)
 
     def list(self):
         """
@@ -74,12 +66,11 @@ class Repository(object):
             res = json.load(res)
             assert isinstance(res['data'], list)
 
-            # Only list non-installed packages
             return [
                 InstallablePackage(
                     name=item['name'], id=item['id'], version=item['version'], description=item['description'],
                     author=item['author'], repo=self)
-                for item in res['data'] if LocalPackage.by_name(item['id']) is None
+                for item in res['data']
             ]
         except ValueError:
             log.error('Error fetching repo: %r\n%s',
@@ -106,13 +97,16 @@ class Repository(object):
         except (KeyError, ValueError):
             return None
 
+    def download(self, name, version):
+        endpoint = '/download?spec=' + quote(name) + '==' + quote(version)
+        return download(self.url + endpoint, to_file=True)
+
     @staticmethod
     def from_urls(repos=None):
         if repos is None:
             repos = g['repos']
 
-        repos = [Repository(repo) if isinstance(repo, basestring) else repo for repo in repos]
-        return repos
+        return [Repository(repo) for repo in repos]
 
     def __repr__(self):
         return "<Repository url=%r>" % self.url
@@ -123,14 +117,15 @@ def get_online_packages(repos=None):
     Generates a list of packages from specified repositories.
 
     :param repos: Array of repository urls (string). Default: g['repos']
-    :returns: list(:class:`~pkg.package.InstallablePackage`) freom each repos.
+    :type repos: list(str) or None
+    :returns: list(:class:`~pkg.package.InstallablePackage`) from each repos.
     """
 
     repos = Repository.from_urls(repos)
 
     pool = ThreadPool(MAX_CONCURRENT)
     results = pool.map(lambda repo: repo.list(), repos)
-    results = [x for x in results if x]
+    results = [pkgs for pkgs in results if pkgs]
 
     # flatten results
     return [pkg for pkgs in results for pkg in pkgs]

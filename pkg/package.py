@@ -15,10 +15,9 @@ import zipfile
 
 import ida_kernwin
 import ida_loader
+import ida_diskio
 
-from .compat import quote
 from .config import g
-from .downloader import download
 from .env import ea as current_ea, os as current_os
 from .internal_api import invalidate_proccache, get_extlangs, idausr_remove, idausr_add
 from .logger import getLogger
@@ -64,7 +63,7 @@ class LocalPackage(object):
         idausr_remove(self.path)
 
         with FixInterpreter():
-            for script in self.metadata().get('uninstallers', []):
+            for script in self.info().get('uninstallers', []):
                 script = os.path.join(self.path, script)
                 try:
                     runpy.run_path(script)
@@ -89,22 +88,6 @@ class LocalPackage(object):
 
         log.info("Done!")
 
-    @staticmethod
-    def _remove_package_dir(path):
-        errors = []
-
-        def onerror(_listdir, _path, exc_info):
-            log.error("%s: %s", _path, str(exc_info[1]))
-            errors.append(exc_info[1])
-
-        shutil.rmtree(path, onerror=onerror)
-
-        if errors:
-            # Mark for later removal
-            open(os.path.join(path, '.removed'), 'wb').close()
-
-        return not errors
-
     def install(self, remove_on_fail=False):
         """
         Run python scripts specified by :code:`installers` field in `info.json`.
@@ -114,7 +97,7 @@ class LocalPackage(object):
         orig_cwd = os.getcwd()
         try:
             os.chdir(self.path)
-            info = self.metadata()
+            info = self.info()
             scripts = info.get('installers', [])
             if not isinstance(scripts, list):
                 raise Exception(
@@ -136,14 +119,15 @@ class LocalPackage(object):
         """
         Actually does :code:`ida_loaders.load_plugin(paths)`, and updates IDAUSR variable.
         """
-        if not force and self.path in os.environ.get('IDAUSR', ''):
+        if not force and self.path in ida_diskio.get_ida_subdirs(''):
             # Already loaded, just update sys.path for python imports
-            sys.path.append(self.path)
+            if self.path not in sys.path:
+                sys.path.append(self.path)
             return
 
         # XXX: find a more efficient way to ensure dependencies
         errors = []
-        for dependency in self.metadata().get('dependencies', {}).keys():
+        for dependency in self.info().get('dependencies', {}).keys():
             dep = LocalPackage.by_name(dependency)
             if not dep:
                 errors.append('Dependency not found: %r' % dependency)
@@ -158,7 +142,8 @@ class LocalPackage(object):
         def handler():
             # Load plugins immediately
             # processors / loaders will be loaded on demand
-            sys.path.append(self.path)
+            if self.path not in sys.path:
+                sys.path.append(self.path)
 
             # Update IDAUSR variable
             idausr_add(self.path)
@@ -182,7 +167,7 @@ class LocalPackage(object):
         It's called at :code:`idapythonrc.py`.
         """
         errors = []
-        for dependency in self.metadata().get('dependencies', {}).keys():
+        for dependency in self.info().get('dependencies', {}).keys():
             dep = LocalPackage.by_name(dependency)
             if not dep:
                 errors.append('Dependency not found: %r' % dependency)
@@ -195,7 +180,9 @@ class LocalPackage(object):
             return
 
         idausr_add(self.path)
-        sys.path.append(self.path)
+
+        if self.path not in sys.path:
+            sys.path.append(self.path)
 
     def plugins(self):
         return self._collect_modules('plugins')
@@ -227,7 +214,7 @@ class LocalPackage(object):
                 if is64 == (current_ea == 64):
                     callback(str(path))
 
-    def metadata(self):
+    def info(self):
         """
         Loads :code:`info.json` and returns a parsed JSON object.
 
@@ -290,6 +277,22 @@ class LocalPackage(object):
         res = (x for x in res if x)
         res = [x for x in res if (x.id in g['ignored_packages']) == disabled]
         return res
+
+    @staticmethod
+    def _remove_package_dir(path):
+        errors = []
+
+        def onerror(_listdir, _path, exc_info):
+            log.error("%s: %s", _path, str(exc_info[1]))
+            errors.append(exc_info[1])
+
+        shutil.rmtree(path, onerror=onerror)
+
+        if errors:
+            # Mark for later removal
+            open(os.path.join(path, '.removed'), 'wb').close()
+
+        return not errors
 
     def __repr__(self):
         return '<LocalPackage id=%r path=%r version=%r>' % \
@@ -361,11 +364,8 @@ def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visite
 
     if downloading:
         log.info('Collecting %s...', name)
-        data = download(repo.url + '/download?spec=' +
-                        quote(name) + '==' + quote(downloading),
-                        to_file=True)
-        io = data
-        f = zipfile.ZipFile(io, 'r')
+        data = repo.download(name, downloading)
+        f = zipfile.ZipFile(data, 'r')
 
         info = json.load(f.open('info.json'))
         install_path = os.path.join(g['path']['packages'], info["_id"])
@@ -392,12 +392,12 @@ def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visite
         log.info("Requirement already satisfied: %s%s",
                  name, '' if version_spec == '*' else version_spec)
 
-    restart_required = pkg.metadata().get('restart_required', False)
+    restart_required = pkg.info().get('restart_required', False)
     _visited[name] = (pkg.version, restart_required)
 
     # First, install dependencies
     # TODO: add version check
-    for dep_name, dep_version_spec in pkg.metadata().get('dependencies', {}).items():
+    for dep_name, dep_version_spec in pkg.info().get('dependencies', {}).items():
         install_from_repo(repo, dep_name, dep_version_spec, allow_upgrade, _visited)
 
     if downloading:
@@ -410,8 +410,7 @@ def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visite
         log.info("Successfully installed %s",
                  ' '.join('%s-%s' % (key, value[0]) for key, value in _visited.items()))
 
-        delayed = [(key, value)
-                   for key, value in _visited.items() if value[1]]
+        delayed = [(key, value) for key, value in _visited.items() if value[1]]
         if delayed:
             log.info(
                 "Plugins in the following packages will be loaded after restarting IDA.")

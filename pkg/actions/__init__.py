@@ -10,13 +10,13 @@ def register_action(name, shortcut=''):
             def __init__(self):
                 ida_kernwin.action_handler_t.__init__(self)
 
-            def activate(self, ctx):
+            def activate(self, _ctx):
                 t = threading.Thread(target=f)
                 t.start()
                 return 1
 
             # This action is always available.
-            def update(self, ctx):
+            def update(self, _ctx):
                 return ida_kernwin.AST_ENABLE_ALWAYS
 
         # 2) Describe the action

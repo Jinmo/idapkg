@@ -17,24 +17,23 @@ log = getLogger(__name__)
 def _unique_items(items):
     seen = set()
     res = [(item, seen.add(item))[0] for item in items if item not in seen]
-
     return res
 
 
 def idausr_add(new):
     orig = idaapi.get_ida_subdirs('')
     new = _unique_items(orig + [new])
-    apply_idausr(new)
+    _apply_idausr(new)
 
 
 def idausr_remove(target):
     orig = idaapi.get_ida_subdirs('')
     assert target in orig, repr((orig, target))
     orig.remove(target)
-    apply_idausr(orig)
+    _apply_idausr(orig)
 
 
-def putenv(key, value):
+def _putenv(key, value):
     os.putenv(key, value)
     os.environ[key] = value
 
@@ -154,11 +153,7 @@ def invalidate_proccache():
 __possible_to_invalidate = None
 
 
-def invalidate_idausr():
-    return
-
-
-def apply_idausr(new_value):
+def _apply_idausr(new_value):
     global __possible_to_invalidate
 
     if __possible_to_invalidate is False:
@@ -225,10 +220,10 @@ def apply_idausr(new_value):
 
     # Refresh cache
     sep = ';' if current_os == 'win' else ':'
-    putenv('IDAUSR', sep.join(new_value))
+    _putenv('IDAUSR', sep.join(new_value))
     idaapi.get_ida_subdirs('')
 
     # Restore IDAUSR, so the child process is not affected
-    putenv('IDAUSR', original)
+    _putenv('IDAUSR', original)
 
     return True

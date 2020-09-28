@@ -4,7 +4,6 @@ Some console-friendly methods are exposed in pkg.*, and defined at pkg.commands.
 import re
 import threading
 
-from .compat import basestring
 from .config import g
 from .package import LocalPackage
 from .repo import Repository
@@ -33,7 +32,7 @@ def install(spec, repo=None, upgrade=False):
     :param spec: `name==version`, or just `name` only.
     :type spec: str
     :param repo: URL of the repository. Default: :code:`g['repos']`
-    :type repo: str or list(str) or None
+    :type repo: list(str) or None
     :param upgrade: Upgrade when already installed if True.
     """
 
@@ -49,10 +48,9 @@ def install(spec, repo=None, upgrade=False):
     if repo is None:
         repo = g['repos']
 
-    elif isinstance(repo, basestring):
-        repo = [str(repo)]
-
-    return threading.Thread(_install_from_repositories, args=(repo,)).start()
+    t = threading.Thread(_install_from_repositories, args=(repo,))
+    t.start()
+    return t
 
 
 def remove(name):
@@ -88,7 +86,7 @@ def remote(name, repo=None):
         repo = g['repos']
 
     for _repo in repo:
-        pkg = Repository(_repo).single(name)
+        pkg = Repository(_repo).get(name)
         if pkg is None:
             continue
         else:

@@ -77,7 +77,7 @@ def update_pythonrc():
         f.write(py)
 
 
-def init_environment(load=True):
+def init_environment(_load=True):
     """
     Must be called from idapythonrc.py. I didn't test other cases.
     """
@@ -86,14 +86,6 @@ def init_environment(load=True):
     update_pythonrc()
     prepare_virtualenv(g['path']['virtualenv'])
 
-    _original_idausr = os.getenv('IDAUSR', '')
-
-    if not load:
-        # Initialize native offsets and return
-        from .internal_api import invalidate_idausr
-        invalidate_idausr()
-        return
-
     ifred = LocalPackage.by_name('ifred')
     if ifred:
         ifred.load()
@@ -101,6 +93,3 @@ def init_environment(load=True):
 
     for pkg in LocalPackage.all():
         pkg.populate_env()
-
-    from .internal_api import invalidate_idausr
-    invalidate_idausr()

@@ -81,7 +81,7 @@ def _fix_missing_config(obj, reference, path=None):
             if type_tar != type_ref:
                 changed = True
                 obj[key] = copy.deepcopy(value)
-                print('Type is different (%r): %r (saved) vs %r, replacing with initial value %r' \
+                print('Type is different (%r): %r (saved) vs %r, replacing with initial value %r'
                       % ('/'.join(path), type_tar, type_ref, value))
         if isinstance(obj[key], dict):
             changed_, obj[key] = _fix_missing_config(obj[key], value, path + [key])

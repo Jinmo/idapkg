@@ -40,14 +40,14 @@ class FixInterpreter(object):
         pass
 
     def __enter__(self):
-        self.backup, sys.executable = sys.executable, _locate_python()
-        self.backup_popen, subprocess.Popen = subprocess.Popen, Popen
-        self.backup_system, os.system = os.system, system
+        self._executable, sys.executable = sys.executable, _locate_python()
+        self._popen, subprocess.Popen = subprocess.Popen, Popen
+        self._system, os.system = os.system, system
 
     def __exit__(self, type_, value, traceback):
-        sys.executable = self.backup
-        subprocess.Popen = self.backup_popen
-        os.system = self.backup_system
+        sys.executable = self._executable
+        subprocess.Popen = self._popen
+        os.system = self._system
 
 
 def _install_virtualenv(path):

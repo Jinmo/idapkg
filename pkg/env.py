@@ -10,9 +10,9 @@
 """
 
 import collections
+import decimal
 import os as _os
 import sys
-from decimal import Decimal
 
 OS_MAP = {'win32': 'win', 'darwin': 'mac', 'linux2': 'linux'}
 
@@ -21,7 +21,7 @@ idc, idaapi = None, None
 # Will be set from IDA Pro
 ea = -1
 os = 'unknown'
-version = Decimal('0.0')
+version = decimal.Decimal('0.0')
 
 
 def __load_version_from_ida():
@@ -73,7 +73,7 @@ try:
     ea, os = __load_version_from_ida()
 
     version_info = __load_ida_native_version()
-    version = Decimal('%d.%d' % (version_info.major, version_info.minor))
+    version = decimal.Decimal('%d.%d' % (version_info.major, version_info.minor))
 
 except ImportError:
     pass
