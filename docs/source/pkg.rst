@@ -17,6 +17,7 @@ pkg.repo: Repository information
 
 .. automodule:: pkg.repo
     :members:
+    :show-inheritance:
 
 pkg.config: config.json as :code:`g` objects
 ############################################

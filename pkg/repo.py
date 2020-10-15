@@ -20,6 +20,10 @@ log = getLogger(__name__)
 
 
 class Repository(object):
+    """
+    An instance of this class represents a single repository.
+    """
+
     def get(self, name):
         """
         Fetch metadata for single package from the repo.
@@ -46,10 +50,7 @@ class Repository(object):
         raise NotImplementedError
 
     @staticmethod
-    def from_urls(repos=None):
-        if repos is None:
-            repos = g['repos']
-
+    def from_url(url):
         def old_repo(name):
             return OldRepository(name)
 
@@ -63,7 +64,7 @@ class Repository(object):
             'github': github_repo
         }
 
-        return [supported_types[url.split(':')[0]](url) for url in repos]
+        return supported_types[url.split(':')[0]](url)
 
     def __repr__(self):
         raise NotImplementedError
@@ -71,7 +72,8 @@ class Repository(object):
 
 class OldRepository(Repository):
     """
-    An instance of this class represents a single repository.
+    S3-hosted repository.
+    https://github.com/Jinmo/idapkg-api
     """
 
     def __init__(self, url, timeout=TIMEOUT):
@@ -135,6 +137,10 @@ class OldRepository(Repository):
 
 
 class GitHubRepository(Repository):
+    """
+    GitHub-hosted repository.
+    https://github.com/Jinmo/idapkg-repo
+    """
     API_BLOB = 'https://raw.githubusercontent.com/{0}/{1}'
     API_ARCHIVE = 'https://github.com/{0}/archive/{1}.zip'
 
@@ -168,29 +174,32 @@ class GitHubRepository(Repository):
 
     def download(self, name, version):
         endpoint = 'releases/{0}.json'.format(quote(name))
-        releases = download(self.API_BLOB.format(self.repo, endpoint))
+        releases = json.load(download(self.API_BLOB.format(self.repo, endpoint)))
         for release in releases:
             if release['version'] == version:
                 repo = release['repo']
                 commit = release['commit']
                 assert self._is_valid_repo(repo)
                 assert self._is_valid_commit(commit)
-                return download(self.API_ARCHIVE.format(repo, commit))
+                return download(self.API_ARCHIVE.format(repo, commit), to_file=True)
 
         raise Exception("release not found! (%s==%s)" % (name, version))
 
     @staticmethod
     def _is_valid_repo(repo):
-        if repo.count('/') != 2:
+        if repo.count('/') not in (1, 2):
             return False
 
+        if repo.count('/') == 1:
+            repo += '/master'
+
         if '..' in repo:
-        	return False
+            return False
 
         owner, name, branch_or_commit = repo.split('/')
 
         if '.' in (owner, name, branch_or_commit):
-        	return False
+            return False
 
         # From https://github.com/join:
         # Username may only contain alphanumeric characters or single hyphens, and
@@ -207,7 +216,7 @@ class GitHubRepository(Repository):
 
         # Basic names only
         if not all('a' <= x <= 'z' or x in '.-_' for x in branch_or_commit.lower()):
-        	return False
+            return False
 
         return True
 
@@ -239,4 +248,4 @@ def get_online_packages(repos=None):
 
 
 if __name__ == '__main__':
-    print('\n'.join(map(repr, get_online_packages(['github:Jinmo/idapkg-example-repo/master']))))
+    print('\n'.join(map(repr, get_online_packages(['github:Jinmo/idapkg-repo/master']))))

@@ -48,7 +48,7 @@ def install(spec, repo=None, upgrade=False):
     if repo is None:
         repo = g['repos']
 
-    t = threading.Thread(_install_from_repositories, args=(repo,))
+    t = threading.Thread(target=_install_from_repositories, args=(repo,))
     t.start()
     return t
 
@@ -86,7 +86,7 @@ def remote(name, repo=None):
         repo = g['repos']
 
     for _repo in repo:
-        pkg = Repository(_repo).get(name)
+        pkg = Repository.from_url(_repo).get(name)
         if pkg is None:
             continue
         else:

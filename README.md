@@ -56,7 +56,8 @@ In fact, all paths above are configurable!
         "packages": "...\\idapkg\\packages"
     }, 
     "repos": [
-        "https://api.idapkg.com"
+        "https://api.idapkg.com",
+        "github:Jinmo/idapkg-repo/master"
     ]
 }
 ```

@@ -50,7 +50,7 @@ def upgrade_package():
 
 def _upgrade_package(name):
     log.info("Upgrading package %s..." % name)
-    repos = Repository.from_urls()
+    repos = Repository.from_urls(g['repos'])
 
     for repo in repos:
         res = repo.get(name)
