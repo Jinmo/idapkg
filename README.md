@@ -14,6 +14,10 @@ threading.Thread(target=install).start()
 
 Then you can access related actions via command palette (Ctrl+Shift+P on windows/mac/linux, or Command+Shift+P on mac) after restarting IDA Pro.
 
+### Testing latest changes
+
+To test with the master branch, you can replace `tag='v...'` into `tag='master'`.
+
 ## What file is created
 
 `~(Your home directory)/idapkg`, and some lines in idapythonrc.py will be created.
