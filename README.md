@@ -16,7 +16,7 @@ Then you can access related actions via command palette (Ctrl+Shift+P on windows
 
 ### Testing latest changes
 
-To test with the master branch, you can replace `tag='v...'` into `tag='master'`.
+To test the master branch, you can replace `tag='v...'` into `tag='master'`.
 
 ## What file is created
 

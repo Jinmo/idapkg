@@ -367,8 +367,16 @@ def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visite
         data = repo.download(name, downloading)
         f = zipfile.ZipFile(data, 'r')
 
-        info = json.load(f.open('info.json'))
-        install_path = os.path.join(g['path']['packages'], info["_id"])
+        # No  /: topmost files
+        # One /: topmost folders
+        topmost_files = [path for path in f.namelist() if path.count('/') == 0]
+        # From ZipInfo.is_dir() in Python 3.x
+        topmost_folders = [path for path in f.namelist() if path.endswith('/')]
+        common_prefix = topmost_folders[0] if len(topmost_files) == 0 and len(topmost_folders) == 1 else ""
+
+        info = json.load(f.open(common_prefix + 'info.json'))
+        packages_path = g['path']['packages']
+        install_path = os.path.join(packages_path, info["_id"])
 
         # this ensures os.path.exists(install_path) == False
         # TODO: should we unload a already-loaded plugin?
@@ -382,7 +390,11 @@ def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visite
             os.unlink(removed)
 
         log.info('Extracting into %r...', install_path)
-        f.extractall(install_path)
+        if common_prefix:
+            f.extractall(packages_path)
+            os.rename(os.path.join(packages_path, common_prefix), install_path)
+        else:
+            f.extractall(install_path)
 
         # Initiate LocalPackage object
         pkg = LocalPackage(info['_id'], install_path, info['version'])
@@ -400,6 +412,7 @@ def install_from_repo(repo, name, version_spec='*', allow_upgrade=False, _visite
     for dep_name, dep_version_spec in pkg.info().get('dependencies', {}).items():
         install_from_repo(repo, dep_name, dep_version_spec, allow_upgrade, _visited)
 
+    # Then, install this package.
     if downloading:
         pkg.install()
 

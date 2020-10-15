@@ -237,7 +237,10 @@ def get_online_packages(repos=None):
     :returns: list(:class:`~pkg.package.InstallablePackage`) from each repos.
     """
 
-    repos = Repository.from_urls(repos)
+    if repos is None:
+        repos = g['repos']
+
+    repos = [Repository.from_url(url) for url in repos]
 
     pool = ThreadPool(MAX_CONCURRENT)
     results = pool.map(lambda repo: repo.list(), repos)
