@@ -9,9 +9,9 @@ from .logger import getLogger
 from .process import Popen, system
 
 # extracted from https://pypi.org/simple/virtualenv/
-VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/62/77' \
-                 '/6a86ef945ad39aae34aed4cc1ae4a2f941b9870917a974ed7c5b6f137188/virtualenv-16.7.8-py2.py3-none-any.whl'
-HASH = 'b57776b44f91511866594e477dd10e76a6eb44439cdd7f06dcd30ba4c5bd854f'
+VIRTUALENV_URL = 'https://files.pythonhosted.org/packages/b3/3a' \
+                 '/3690099fc8f5137a1d879448c49480590bf6f0529eba7b72e3a34ffd8a31/virtualenv-16.7.10-py2.py3-none-any.whl'
+HASH = '105893c8dc66b7817691c7371439ec18e3b6c5e323a304b5ed96cdd2e75cc1ec'
 
 log = getLogger(__name__)
 
