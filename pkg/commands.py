@@ -78,7 +78,7 @@ def remote(name, repo=None):
 
     :param name: Name of the package
     :param repo: URL of the repository. Default: :code:`g['repos']`
-    :type repo: str or list(str) or None
+    :type repo: list(str) or None
     :returns: None if package is not found, else InstallablePackage instance.
     :rtype: InstallablePackage
     """
